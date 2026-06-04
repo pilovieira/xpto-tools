@@ -172,8 +172,10 @@
 
     .card-purple::before  { background: linear-gradient(90deg, var(--accent-purple), #a78bfa); }
     .card-pink::before    { background: linear-gradient(90deg, var(--accent-pink), #f472b6); }
+    .card-teal::before    { background: linear-gradient(90deg, var(--accent-teal), #5eead4); }
     .card-purple::after   { box-shadow: inset 0 0 60px rgba(139, 92, 246, 0.06); }
     .card-pink::after     { box-shadow: inset 0 0 60px rgba(236, 72, 153, 0.06); }
+    .card-teal::after     { box-shadow: inset 0 0 60px rgba(20, 184, 166, 0.06); }
 
     .tool-card:hover {
       transform: translateY(-6px);
@@ -187,6 +189,7 @@
 
     .card-purple:hover { border-color: rgba(139, 92, 246, 0.3); }
     .card-pink:hover   { border-color: rgba(236, 72, 153, 0.3); }
+    .card-teal:hover   { border-color: rgba(20, 184, 166, 0.3); }
 
     /* Icon */
     .tool-icon {
@@ -202,6 +205,7 @@
 
     .icon-purple { background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.2); }
     .icon-pink   { background: rgba(236, 72, 153, 0.15); border: 1px solid rgba(236, 72, 153, 0.2); }
+    .icon-teal   { background: rgba(20, 184, 166, 0.15); border: 1px solid rgba(20, 184, 166, 0.2); }
 
     .tool-body { flex: 1; }
 
@@ -233,6 +237,7 @@
 
     .chip-purple { background: rgba(139, 92, 246, 0.12); color: #c4b5fd; }
     .chip-pink   { background: rgba(236, 72, 153, 0.12); color: #f9a8d4; }
+    .chip-teal   { background: rgba(20, 184, 166, 0.12); color: #99f6e4; }
 
     .tool-cta {
       display: flex;
@@ -248,6 +253,7 @@
 
     .cta-purple { color: #a78bfa; }
     .cta-pink   { color: #f472b6; }
+    .cta-teal   { color: #14b8a6; }
 
     .cta-arrow {
       transition: transform 0.2s ease;
@@ -329,6 +335,52 @@
         </div>
         <div class="tool-cta cta-pink">
           Open Base58 tool
+          <svg class="cta-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </div>
+      </a>
+
+      <!-- PDF Splitter -->
+      <a href="/pdf-splitter" class="tool-card card-teal" id="tool-pdf-splitter">
+        <div class="tool-icon icon-teal">🥞</div>
+        <div class="tool-body">
+          <div class="tool-name">PDF Splitter</div>
+          <div class="tool-description">
+            Split a PDF document into separate single-page PDF files. Processed instantly in-browser for complete security.
+          </div>
+          <div class="tool-features">
+            <span class="feature-chip chip-teal">One PDF per page</span>
+            <span class="feature-chip chip-teal">Direct download</span>
+            <span class="feature-chip chip-teal">Batch ZIP download</span>
+          </div>
+        </div>
+        <div class="tool-cta cta-teal">
+          Open PDF Splitter
+          <svg class="cta-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </div>
+      </a>
+
+      <!-- Token Generator -->
+      <a href="/token" class="tool-card card-purple" id="tool-token">
+        <div class="tool-icon icon-purple">⬡</div>
+        <div class="tool-body">
+          <div class="tool-name">Token Generator</div>
+          <div class="tool-description">
+            Generate secure, random cryptographic tokens with custom types, length, prefix, formatting, and grouping.
+          </div>
+          <div class="tool-features">
+            <span class="feature-chip chip-purple">Hex / Base64 / UUID</span>
+            <span class="feature-chip chip-purple">Custom Prefix</span>
+            <span class="feature-chip chip-purple">Bulk export</span>
+          </div>
+        </div>
+        <div class="tool-cta cta-purple">
+          Open Token Generator
           <svg class="cta-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="5" y1="12" x2="19" y2="12"></line>
             <polyline points="12 5 19 12 12 19"></polyline>

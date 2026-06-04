@@ -122,6 +122,17 @@ const base58AdminPage = async (req, res) => {
   }
 };
 
+/** Serve PDF splitter admin dashboard */
+const pdfSplitterAdminPage = async (req, res) => {
+  if (await isAuth(req)) {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(fs.readFileSync(path.join(__dirname, 'pdf-splitter.html'), 'utf-8'));
+  } else {
+    res.writeHead(302, { 'Location': '/admin' });
+    res.end();
+  }
+};
+
 /** Provide base58 logs data */
 const base58AdminData = async (req, res) => {
   if (!await isAuth(req)) {
@@ -143,6 +154,7 @@ module.exports = {
   adminPage,
   shortenerAdminPage,
   base58AdminPage,
+  pdfSplitterAdminPage,
   adminLogin,
   adminLogout,
   shortenerAdminData,

@@ -9,14 +9,14 @@ dotenv.config();
 
 const app = express();
 app.use(logger.requestLogger);
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
+app.use(bodyParser.json({ limit: '50mb' }));
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
 const port = process.env.PORT || 5000;
 app.listen(port, () => logger.info(`Service started. Listening on port ${port}!`));
 
-const { adminPage, shortenerAdminPage, base58AdminPage, adminLogin, adminLogout, shortenerAdminData, base58AdminData, shortenerAdminDeleteKey, shortenerAdminCreateKey } = require('./admin');
+const { adminPage, shortenerAdminPage, base58AdminPage, pdfSplitterAdminPage, adminLogin, adminLogout, shortenerAdminData, base58AdminData, shortenerAdminDeleteKey, shortenerAdminCreateKey } = require('./admin');
 
 //favicon
 app.get('/favicon.ico', (req, res) => {
@@ -29,6 +29,15 @@ app.get('/admin', adminPage);
 app.post('/admin/login', adminLogin);
 app.get('/admin/logout', adminLogout);
 app.get('/admin/shortener', shortenerAdminPage);
+
+//pdf-splitter
+const { servePdfSplitterPage, uploadPdf, pdfAdminData, downloadPdfFile, deletePdfFile } = require('./pdf-splitter');
+app.get('/pdf-splitter', servePdfSplitterPage);
+app.post('/pdf-splitter/upload', uploadPdf);
+app.get('/admin/pdf-splitter', pdfSplitterAdminPage);
+app.get('/admin/pdf-splitter/data', pdfAdminData);
+app.get('/admin/pdf-splitter/files/:filename', downloadPdfFile);
+app.delete('/admin/pdf-splitter/files/:filename', deletePdfFile);
 
 //base58
 const { logBase58Action } = require('./base58');
