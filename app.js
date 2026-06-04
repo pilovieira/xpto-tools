@@ -16,7 +16,7 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 const port = process.env.PORT || 5000;
 app.listen(port, () => logger.info(`Service started. Listening on port ${port}!`));
 
-const { adminPage, shortenerAdminPage, base58AdminPage, pdfSplitterAdminPage, adminLogin, adminLogout, shortenerAdminData, base58AdminData, shortenerAdminDeleteKey, shortenerAdminCreateKey } = require('./admin');
+const { adminPage, shortenerAdminPage, base58AdminPage, pdfSplitterAdminPage, tokenAdminPage, adminLogin, adminLogout, shortenerAdminData, base58AdminData, tokenAdminData, shortenerAdminDeleteKey, shortenerAdminCreateKey } = require('./admin');
 
 //favicon
 app.get('/favicon.ico', (req, res) => {
@@ -58,10 +58,14 @@ app.delete('/admin/shortener/keys/:key', shortenerAdminDeleteKey);
 app.post('/admin/shortener/keys', shortenerAdminCreateKey);
 
 //token generator
+const { logTokenAction } = require('./token');
 app.get('/token', (req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/html' });
   res.end(fs.readFileSync(path.join(__dirname, 'token', 'index.html'), 'utf-8'));
 });
+app.post('/token/log', logTokenAction);
+app.get('/admin/token', tokenAdminPage);
+app.get('/admin/token/data', tokenAdminData);
 
 app.get('/*', (req, res) => {
   let key = req.url.replace('/', '');

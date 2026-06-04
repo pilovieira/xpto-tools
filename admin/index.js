@@ -147,6 +147,31 @@ const base58AdminData = async (req, res) => {
   });
 };
 
+/** Serve token generator admin dashboard */
+const tokenAdminPage = async (req, res) => {
+  if (await isAuth(req)) {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(fs.readFileSync(path.join(__dirname, 'token.html'), 'utf-8'));
+  } else {
+    res.writeHead(302, { 'Location': '/admin' });
+    res.end();
+  }
+};
+
+/** Provide token generator logs data */
+const tokenAdminData = async (req, res) => {
+  if (!await isAuth(req)) {
+    return res.status(401).json({ fail: 'Unauthorized' });
+  }
+  redisDb.lrange('xpto-token:logs', 0, 99, (err, logs) => {
+    if (err) return res.status(500).json({ fail: err.message });
+    const logList = (logs || []).map(l => {
+      try { return JSON.parse(l); } catch { return null; }
+    }).filter(Boolean);
+    res.status(200).json({ logs: logList });
+  });
+};
+
 
 
 module.exports = {
@@ -155,10 +180,12 @@ module.exports = {
   shortenerAdminPage,
   base58AdminPage,
   pdfSplitterAdminPage,
+  tokenAdminPage,
   adminLogin,
   adminLogout,
   shortenerAdminData,
   base58AdminData,
+  tokenAdminData,
   shortenerAdminDeleteKey,
   shortenerAdminCreateKey
 };
