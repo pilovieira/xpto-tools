@@ -1,8 +1,9 @@
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { redisDb } = require('../util/db');
 
-const uploadDir = path.join(__dirname, '..', 'uploads');
+const uploadDir = path.join(os.tmpdir(), 'xpto-pdf-uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
