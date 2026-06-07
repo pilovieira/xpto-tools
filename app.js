@@ -30,6 +30,10 @@ app.post('/admin/login', adminLogin);
 app.get('/admin/logout', adminLogout);
 app.get('/admin/shortener', shortenerAdminPage);
 
+//pdf-signer
+const { servePdfSignerPage } = require('./pdf-signer');
+app.get('/pdf-signer', servePdfSignerPage);
+
 //pdf-splitter
 const { servePdfSplitterPage, uploadPdf, pdfAdminData, downloadPdfFile, deletePdfFile } = require('./pdf-splitter');
 app.get('/pdf-splitter', servePdfSplitterPage);
