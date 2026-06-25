@@ -34,6 +34,10 @@ app.get('/admin/shortener', shortenerAdminPage);
 const { servePdfSignerPage } = require('./pdf-signer');
 app.get('/pdf-signer', servePdfSignerPage);
 
+//image-to-pdf
+const { serveImageToPdfPage } = require('./image-to-pdf');
+app.get('/image-to-pdf', serveImageToPdfPage);
+
 //pdf-splitter
 const { servePdfSplitterPage, uploadPdf, pdfAdminData, downloadPdfFile, deletePdfFile } = require('./pdf-splitter');
 app.get('/pdf-splitter', servePdfSplitterPage);
