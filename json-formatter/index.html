@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JSON Formatter — XPTO Tools</title>
+  <meta name="description" content="Format, minify and validate JSON in your browser.">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/xpto.css">
+  <script src="/public/xpto.js"></script>
+  <style>
+    .editor { min-height: 460px; resize: vertical; white-space: pre; overflow: auto; tab-size: 2; }
+    .status { display: flex; align-items: center; gap: 8px; min-height: 24px; font-size: 13px; }
+    .options { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+    .check { display: inline-flex; align-items: center; gap: 8px; height: 40px; font-size: 14px; font-weight: 500; cursor: pointer; }
+    .check input { accent-color: var(--accent); width: 16px; height: 16px; }
+  </style>
+</head>
+<body data-area="public" data-active="json">
+  <main class="container wide">
+    <div data-page-head data-tool="json"></div>
+
+    <section class="card stack">
+      <div class="options">
+        <div class="field"><label>Indentation</label>
+          <div class="seg" id="indentSeg">
+            <button class="seg-btn active" data-indent="2">2 spaces</button>
+            <button class="seg-btn" data-indent="4">4 spaces</button>
+            <button class="seg-btn" data-indent="tab">Tab</button>
+          </div>
+        </div>
+        <label class="check"><input type="checkbox" id="sortKeys"> Sort keys</label>
+        <span class="spacer"></span>
+        <div class="row">
+          <button class="btn btn-primary" id="formatBtn">Format</button>
+          <button class="btn" id="minifyBtn">Minify</button>
+          <button class="btn btn-ghost" id="sampleBtn">Sample</button>
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="field">
+          <label for="input">Input</label>
+          <textarea class="textarea editor" id="input" placeholder='Paste JSON here, e.g. {"hello": "world"}' spellcheck="false"></textarea>
+        </div>
+        <div class="field">
+          <div class="row between"><label for="output">Output</label>
+            <div class="row" style="gap:6px">
+              <button class="btn btn-sm" id="copyBtn"></button>
+              <button class="btn btn-sm" id="downloadBtn"></button>
+              <button class="btn btn-sm btn-ghost" id="swapBtn" title="Use output as input"></button>
+            </div>
+          </div>
+          <textarea class="textarea editor" id="output" readonly placeholder="Result will appear here…" spellcheck="false"></textarea>
+        </div>
+      </div>
+
+      <div class="status" id="status"></div>
+    </section>
+  </main>
+
+  <script>
+    const input = X.$('#input');
+    const output = X.$('#output');
+    const status = X.$('#status');
+    let indent = 2;
+
+    X.$('#copyBtn').innerHTML = `${X.icon('copy', 'icon-sm')} Copy`;
+    X.$('#downloadBtn').innerHTML = `${X.icon('download', 'icon-sm')} Download`;
+    X.$('#swapBtn').innerHTML = `${X.icon('repeat', 'icon-sm')} Use as input`;
+
+    X.$$('#indentSeg .seg-btn').forEach(btn => btn.addEventListener('click', () => {
+      X.$$('#indentSeg .seg-btn').forEach(b => b.classList.toggle('active', b === btn));
+      indent = btn.dataset.indent === 'tab' ? '\t' : +btn.dataset.indent;
+      if (output.value && input.value.trim()) run('format');
+    }));
+
+    const setStatus = (html, tone = '') => { status.innerHTML = tone ? `<span class="badge badge-${tone}">${html}</span>` : html; };
+
+    const sortDeep = v => Array.isArray(v) ? v.map(sortDeep)
+      : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map(k => [k, sortDeep(v[k])])) : v;
+
+    /** Turn a JSON.parse error into "line L, column C" using the position V8 reports */
+    function describeError(err, text) {
+      const msg = err.message;
+      let line, col;
+      const lc = msg.match(/line (\d+) column (\d+)/);
+      const pos = msg.match(/position (\d+)/);
+      if (lc) { line = +lc[1]; col = +lc[2]; }
+      else if (pos) {
+        const before = text.slice(0, +pos[1]).split('\n');
+        line = before.length; col = before[before.length - 1].length + 1;
+      }
+      return { msg, line, col };
+    }
+
+    function run(mode) {
+      const text = input.value;
+      if (!text.trim()) { output.value = ''; return setStatus('Paste some JSON first.'); }
+      try {
+        let data = JSON.parse(text);
+        if (X.$('#sortKeys').checked) data = sortDeep(data);
+        output.value = mode === 'minify' ? JSON.stringify(data) : JSON.stringify(data, null, indent);
+        const saved = text.length - output.value.length;
+        track(mode, true, text, undefined, JSON.stringify(data));
+        setStatus(`${X.icon('check', 'icon-sm')} Valid JSON`, 'ok');
+        status.insertAdjacentHTML('beforeend', `<span class="muted">${X.fmtBytes(new Blob([output.value]).size)} · ${output.value.split('\n').length} line(s)${mode === 'minify' && saved > 0 ? ` · ${saved} chars saved` : ''}</span>`);
+      } catch (err) {
+        output.value = '';
+        track(mode, false, text, err.message);
+        const { msg, line, col } = describeError(err, text);
+        setStatus(`${X.icon('alert', 'icon-sm')} Invalid JSON${line ? ` — line ${line}, column ${col}` : ''}`, 'danger');
+        status.insertAdjacentHTML('beforeend', `<span class="muted mono">${X.esc(msg)}</span>`);
+        if (line) jumpTo(text, line, col);
+      }
+    }
+
+    /** Usage log: sizes, options and (for valid input) the minified JSON are sent to the server */
+    function track(mode, valid, text, error, minified) {
+      X.track('/json/log', {
+        action: mode, valid, inputSize: new Blob([text]).size, outputSize: valid ? new Blob([output.value]).size : 0,
+        indent: indent === '	' ? 'tab' : String(indent), sortKeys: X.$('#sortKeys').checked, error, minified
+      });
+    }
+
+    function jumpTo(text, line, col) {
+      const lines = text.split('\n');
+      const offset = lines.slice(0, line - 1).reduce((n, l) => n + l.length + 1, 0) + col - 1;
+      input.focus();
+      input.setSelectionRange(offset, Math.min(offset + 1, text.length));
+    }
+
+    X.$('#formatBtn').addEventListener('click', () => run('format'));
+    X.$('#minifyBtn').addEventListener('click', () => run('minify'));
+    X.$('#sortKeys').addEventListener('change', () => input.value.trim() && run('format'));
+    input.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') run('format'); });
+
+    X.$('#sampleBtn').addEventListener('click', () => {
+      input.value = '{"name":"XPTO","tools":["shortener","base58","json"],"nested":{"ok":true,"count":3,"ratio":0.5,"none":null}}';
+      run('format');
+    });
+    X.$('#copyBtn').addEventListener('click', () => output.value ? X.copy(output.value, 'JSON copied') : X.toast('Nothing to copy yet', 'error'));
+    X.$('#swapBtn').addEventListener('click', () => { if (output.value) { input.value = output.value; output.value = ''; setStatus(''); } });
+    X.$('#downloadBtn').addEventListener('click', () => {
+      if (!output.value) return X.toast('Nothing to download yet', 'error');
+      const url = URL.createObjectURL(new Blob([output.value], { type: 'application/json' }));
+      Object.assign(document.createElement('a'), { href: url, download: 'formatted.json' }).click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+  </script>
+</body>
+</html>

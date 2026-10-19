@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JSON Formatter Admin — XPTO Tools</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/xpto.css">
+  <script src="/public/xpto.js"></script>
+</head>
+<body data-area="admin" data-active="json">
+  <main class="container wide">
+    <div data-page-head data-tool="json"></div>
+    <div id="stats"></div>
+
+    <section class="card flush">
+      <div class="toolbar">
+        <div class="input-group">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input class="input" id="search" type="search" placeholder="Search IP, error or user agent…" autocomplete="off">
+        </div>
+        <select class="select" id="actionFilter">
+          <option value="all">All actions</option>
+          <option value="format">Format</option>
+          <option value="minify">Minify</option>
+        </select>
+        <select class="select" id="validFilter">
+          <option value="all">Valid &amp; invalid</option>
+          <option value="valid">Valid only</option>
+          <option value="invalid">Invalid only</option>
+        </select>
+        <button class="btn btn-icon" id="refresh" title="Refresh" aria-label="Refresh"></button>
+      </div>
+      <div id="content"><div class="loader"></div></div>
+    </section>
+  </main>
+
+  <script>
+    let allLogs = [];
+    const content = X.$('#content');
+    X.$('#refresh').innerHTML = X.icon('refresh');
+
+    function render() {
+      const q = X.$('#search').value.toLowerCase();
+      const action = X.$('#actionFilter').value;
+      const valid = X.$('#validFilter').value;
+      const rows = allLogs.filter(l =>
+        (action === 'all' || l.action === action) &&
+        (valid === 'all' || (valid === 'valid') === l.valid) &&
+        (!q || [l.ip, l.error, l.userAgent].join(' ').toLowerCase().includes(q)));
+
+      X.table(content, [
+        { label: 'Time', html: l => X.timeCell(l.timestamp) },
+        { label: 'Action', html: l => `<span class="badge badge-accent">${X.esc(l.action)}</span>` },
+        { label: 'Result', html: l => l.valid
+            ? '<span class="badge badge-ok">valid</span>'
+            : `<span class="badge badge-danger">invalid</span>` },
+        { label: 'Input', th: 'num', cls: 'num', html: l => X.esc(X.fmtBytes(l.inputSize)) },
+        { label: 'Output', th: 'num', cls: 'num', html: l => X.esc(l.valid ? X.fmtBytes(l.outputSize) : '—') },
+        { label: 'Options', html: l => `<span class="muted">${X.esc(l.action === 'minify' ? '—' : (l.indent === 'tab' ? 'tab' : l.indent + ' sp') + (l.sortKeys ? ' · sorted' : ''))}</span>` },
+        { label: 'Error', html: l => X.truncCell(l.error, true) },
+        { label: 'JSON (minified)', html: l => X.truncCell(l.json, true) },
+        { label: 'Client IP', html: l => X.ipBadge(l.ip) },
+        { label: 'User agent', html: l => X.uaCell(l.userAgent) }
+      ], rows, { empty: { icon: 'braces', title: 'No logs found', text: 'No JSON operations match the current filter.' }, onRowClick: openDetail });
+    }
+
+    function openDetail(l) {
+      const field = (label, value) => `<div><div class="kv-label">${label}</div><div class="kv-value">${X.esc(value || '—')}</div></div>`;
+      const m = X.modal({
+        title: `${l.action === 'minify' ? 'Minify' : 'Format'} — ${l.valid ? 'valid' : 'invalid'}`,
+        body: field('Timestamp', X.fmtDate(l.timestamp)) + (l.valid ? field(l.truncated ? 'Minified JSON (truncated)' : 'Minified JSON', l.json) : field('Error', l.error)) + field('Client IP', l.ip) + field('User agent', l.userAgent),
+        actions: l.json ? `<button class="btn" data-copy>${X.icon('copy', 'icon-sm')} Copy JSON</button>` : ''
+      });
+      const copy = X.$('[data-copy]', m.el);
+      if (copy) copy.addEventListener('click', () => X.copy(l.json, 'JSON copied'));
+    }
+
+    async function load() {
+      await X.withBusy(X.$('#refresh'), async () => {
+        try {
+          allLogs = (await X.api('/admin/json/data')).logs || [];
+          const invalid = allLogs.filter(l => !l.valid).length;
+          X.stats(X.$('#stats'), [
+            { label: 'Total operations', value: allLogs.length.toLocaleString(), tone: 'violet' },
+            { label: 'Invalid inputs', value: invalid.toLocaleString(), tone: 'pink' },
+            { label: 'Data processed', value: X.fmtBytes(allLogs.reduce((s, l) => s + (l.inputSize || 0), 0)), tone: 'teal' },
+            { label: 'Unique IPs', value: new Set(allLogs.map(l => l.ip)).size.toLocaleString(), tone: 'sky' }
+          ]);
+          render();
+        } catch (err) {
+          content.innerHTML = '';
+          X.toast(err.message, 'error');
+        }
+      });
+    }
+
+    ['search'].forEach(id => X.$('#' + id).addEventListener('input', render));
+    ['actionFilter', 'validFilter'].forEach(id => X.$('#' + id).addEventListener('change', render));
+    X.$('#refresh').addEventListener('click', load);
+    load();
+  </script>
+</body>
+</html>

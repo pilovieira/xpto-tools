@@ -1,178 +1,97 @@
 const fs = require('fs');
-const path = require('path');
+const fsp = require('fs/promises');
 const os = require('os');
+const path = require('path');
+const express = require('express');
+const logger = require('../logger');
+const { sendPage, asyncHandler, rateLimit, requestMeta } = require('../util/http');
+const { pushLog, readLogs } = require('../util/logs');
 const { redisDb } = require('../util/db');
+const { requireAuth, requirePageAuth } = require('../util/auth');
 
-const uploadDir = path.join(os.tmpdir(), 'xpto-pdf-uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+const LOG_KEY = 'xpto-pdf:logs';
+const MAX_UPLOAD = '50mb';
+const RETENTION_MS = (Number(process.env.PDF_RETENTION_DAYS) || 7) * 24 * 60 * 60 * 1000;
+const uploadDir = process.env.PDF_UPLOAD_DIR || path.join(os.tmpdir(), 'xpto-pdf-uploads');
+fs.mkdirSync(uploadDir, { recursive: true });
 
-/** Serve public pdf-splitter tool page */
-const servePdfSplitterPage = (req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/html' });
-  res.end(fs.readFileSync(path.join(__dirname, 'index.html'), 'utf-8'));
-};
-
-/** Upload original PDF, log transaction, save file */
-const uploadPdf = async (req, res) => {
-  const { filename, fileData } = req.body || {};
-  if (!filename || !fileData) {
-    return res.status(400).json({ fail: 'Missing filename or fileData' });
-  }
-
-  try {
-    // Extract client IP address
-    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
-    const userAgent = req.headers['user-agent'] || 'Unknown';
-
-    // Decode base64 data
-    const buffer = Buffer.from(fileData, 'base64');
-    const filesize = buffer.length;
-
-    // Create a unique filename to avoid collision
-    const timestamp = Date.now();
-    const cleanFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const savedFilename = `${timestamp}_${cleanFilename}`;
-    const filePath = path.join(uploadDir, savedFilename);
-
-    // Save to filesystem
-    fs.writeFileSync(filePath, buffer);
-
-    // Log metadata in Redis list
-    const logEntry = JSON.stringify({
-      filename,
-      filesize,
-      ip,
-      userAgent,
-      timestamp: new Date().toISOString(),
-      savedFilename
-    });
-
-    redisDb.lpush('xpto-pdf:logs', logEntry, (err) => {
-      if (err) {
-        console.error(`Failed to push PDF log: ${err.message}`);
-        return res.status(500).json({ fail: 'Database error storing log' });
-      }
-      redisDb.ltrim('xpto-pdf:logs', 0, 99); // Keep last 100 entries
-      res.status(201).json({ success: true, savedFilename });
-    });
-  } catch (e) {
-    console.error('PDF upload/log error:', e);
-    res.status(500).json({ fail: e.message });
+/** Remove stored uploads older than the retention window */
+const sweepOldFiles = async () => {
+  const cutoff = Date.now() - RETENTION_MS;
+  for (const name of await fsp.readdir(uploadDir)) {
+    const file = path.join(uploadDir, name);
+    try {
+      if ((await fsp.stat(file)).birthtimeMs < cutoff) await fsp.unlink(file);
+    } catch { /* file vanished or is busy; next sweep will retry */ }
   }
 };
+sweepOldFiles().catch(e => logger.error(`Upload sweep failed: ${e.message}`));
+setInterval(() => sweepOldFiles().catch(() => {}), 60 * 60 * 1000).unref();
 
-/** Get pdf-splitter logs and files for admin */
-const pdfAdminData = async (req, res) => {
-  const { isAuth } = require('../util/auth');
-  if (!await isAuth(req)) {
-    return res.status(401).json({ fail: 'Unauthorized' });
-  }
+/** Resolve a user supplied file name inside the upload directory (no path traversal) */
+const resolveUpload = name => path.join(uploadDir, path.basename(name));
 
-  // Fetch logs from Redis
-  redisDb.lrange('xpto-pdf:logs', 0, 99, (err, logs) => {
-    if (err) return res.status(500).json({ fail: err.message });
-    
-    const logList = (logs || []).map(l => {
-      try { return JSON.parse(l); } catch { return null; }
-    }).filter(Boolean);
+const router = express.Router();
 
-    // Scan uploads directory to see actual files on disk
-    fs.readdir(uploadDir, (err, files) => {
-      if (err) {
-        return res.status(200).json({ logs: logList, files: [] });
-      }
+router.get('/pdf-splitter', sendPage(__dirname, 'index.html'));
 
-      const fileList = files.map(file => {
-        try {
-          const filePath = path.join(uploadDir, file);
-          const stats = fs.statSync(filePath);
-          return {
-            filename: file,
-            size: stats.size,
-            birthtime: stats.birthtime
-          };
-        } catch {
-          return null;
-        }
-      }).filter(Boolean);
-
-      // Sort files by date descending
-      fileList.sort((a, b) => b.birthtime - a.birthtime);
-
-      res.status(200).json({ logs: logList, files: fileList });
-    });
-  });
-};
-
-/** Download a saved original PDF */
-const downloadPdfFile = async (req, res) => {
-  const { isAuth } = require('../util/auth');
-  if (!await isAuth(req)) {
-    return res.status(401).json({ fail: 'Unauthorized' });
-  }
-
-  const filename = req.params.filename;
-  if (!filename) return res.status(400).json({ fail: 'Filename is required' });
-
-  // Prevent path traversal
-  const safeFilename = path.basename(filename);
-  const filePath = path.join(uploadDir, safeFilename);
-
-  if (fs.existsSync(filePath)) {
-    res.download(filePath, safeFilename);
-  } else {
-    res.status(404).json({ fail: 'File not found' });
-  }
-};
-
-/** Delete a saved original PDF and remove it from logs */
-const deletePdfFile = async (req, res) => {
-  const { isAuth } = require('../util/auth');
-  if (!await isAuth(req)) {
-    return res.status(401).json({ fail: 'Unauthorized' });
-  }
-
-  const filename = req.params.filename;
-  if (!filename) return res.status(400).json({ fail: 'Filename is required' });
-
-  const safeFilename = path.basename(filename);
-  const filePath = path.join(uploadDir, safeFilename);
-
-  try {
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+/** Receives the raw PDF bytes (Content-Type: application/pdf, name in the X-Filename header) */
+router.post('/pdf-splitter/upload',
+  rateLimit({ windowMs: 60 * 1000, max: 10 }),
+  express.raw({ type: 'application/pdf', limit: MAX_UPLOAD }),
+  asyncHandler(async (req, res) => {
+    const buffer = req.body;
+    if (!Buffer.isBuffer(buffer) || !buffer.length || buffer.subarray(0, 5).toString() !== '%PDF-') {
+      return res.status(400).json({ fail: 'Request body is not a valid PDF' });
     }
 
-    // Also remove from Redis logs list
-    redisDb.lrange('xpto-pdf:logs', 0, -1, (err, logs) => {
-      if (err || !logs) return res.status(200).json({ success: true });
+    let filename = 'document.pdf';
+    try { filename = decodeURIComponent(req.headers['x-filename'] || filename); } catch { /* keep default */ }
+    filename = filename.slice(0, 200);
 
-      const pipeline = redisDb.pipeline();
-      logs.forEach(l => {
-        try {
-          const parsed = JSON.parse(l);
-          if (parsed.savedFilename === safeFilename) {
-            pipeline.lrem('xpto-pdf:logs', 0, l);
-          }
-        } catch (e) {}
-      });
+    const savedFilename = `${Date.now()}_${filename.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    await fsp.writeFile(path.join(uploadDir, savedFilename), buffer);
+    await pushLog(LOG_KEY, { filename, filesize: buffer.length, savedFilename, ...requestMeta(req) });
+    res.status(201).json({ success: true, savedFilename });
+  })
+);
 
-      pipeline.exec((err) => {
-        if (err) console.error('Failed to clean up logs on delete:', err);
-        res.status(200).json({ success: true });
-      });
-    });
-  } catch (e) {
-    res.status(500).json({ fail: e.message });
-  }
-};
+router.get('/admin/pdf-splitter', requirePageAuth, sendPage(__dirname, 'admin.html'));
 
-module.exports = {
-  servePdfSplitterPage,
-  uploadPdf,
-  pdfAdminData,
-  downloadPdfFile,
-  deletePdfFile
-};
+router.get('/admin/pdf-splitter/data', requireAuth, asyncHandler(async (req, res) => {
+  const logs = await readLogs(LOG_KEY);
+  const names = await fsp.readdir(uploadDir).catch(() => []);
+  const files = (await Promise.all(names.map(async filename => {
+    try {
+      const { size, birthtime } = await fsp.stat(path.join(uploadDir, filename));
+      return { filename, size, birthtime };
+    } catch {
+      return null;
+    }
+  }))).filter(Boolean).sort((a, b) => b.birthtime - a.birthtime);
+  res.json({ logs, files });
+}));
+
+router.get('/admin/pdf-splitter/files/:filename', requireAuth, asyncHandler(async (req, res) => {
+  const file = resolveUpload(req.params.filename);
+  if (!fs.existsSync(file)) return res.status(404).json({ fail: 'File not found' });
+  res.download(file, path.basename(file));
+}));
+
+router.delete('/admin/pdf-splitter/files/:filename', requireAuth, asyncHandler(async (req, res) => {
+  const name = path.basename(req.params.filename);
+  await fsp.unlink(resolveUpload(name)).catch(e => { if (e.code !== 'ENOENT') throw e; });
+
+  // Drop matching entries from the log list as well
+  const raw = await redisDb.lrange(LOG_KEY, 0, -1);
+  const pipeline = redisDb.pipeline();
+  raw.forEach(entry => {
+    try {
+      if (JSON.parse(entry).savedFilename === name) pipeline.lrem(LOG_KEY, 0, entry);
+    } catch { /* corrupt entry, leave it */ }
+  });
+  await pipeline.exec();
+  res.json({ success: true });
+}));
+
+module.exports = { router };

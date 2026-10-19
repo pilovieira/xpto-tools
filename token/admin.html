@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Token Admin — XPTO Tools</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/xpto.css">
+  <script src="/public/xpto.js"></script>
+</head>
+<body data-area="admin" data-active="token">
+  <main class="container wide">
+    <div data-page-head data-tool="token"></div>
+    <div id="stats"></div>
+
+    <section class="card flush">
+      <div class="toolbar">
+        <div class="input-group">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input class="input" id="search" type="search" placeholder="Search IP, type, prefix or user agent…" autocomplete="off">
+        </div>
+        <select class="select" id="typeFilter">
+          <option value="all">All types</option>
+          <option value="hex">Hex</option>
+          <option value="base64">Base64</option>
+          <option value="base62">Base62</option>
+          <option value="uuid">UUID</option>
+          <option value="numeric">Numeric</option>
+          <option value="alphanumeric">Alphanumeric</option>
+        </select>
+        <button class="btn btn-icon" id="refresh" title="Refresh" aria-label="Refresh"></button>
+      </div>
+      <div id="content"><div class="loader"></div></div>
+    </section>
+  </main>
+
+  <script>
+    let allLogs = [];
+    const content = X.$('#content');
+    X.$('#refresh').innerHTML = X.icon('refresh');
+
+    function render() {
+      const q = X.$('#search').value.toLowerCase();
+      const type = X.$('#typeFilter').value;
+      const rows = allLogs.filter(l => (type === 'all' || l.type === type) &&
+        (!q || [l.ip, l.type, l.prefix, l.userAgent].join(' ').toLowerCase().includes(q)));
+
+      X.table(content, [
+        { label: 'Time', html: l => X.timeCell(l.timestamp) },
+        { label: 'Type', html: l => `<span class="badge badge-accent">${X.esc(l.type)}</span>` },
+        { label: 'Length', th: 'num', cls: 'num mono', html: l => X.esc(l.type === 'uuid' ? 36 : l.length) },
+        { label: 'Qty', th: 'num', cls: 'num mono', html: l => X.esc(l.quantity) },
+        { label: 'Prefix', cls: 'mono', html: l => X.esc(l.prefix || '—') },
+        { label: 'Client IP', html: l => X.ipBadge(l.ip) },
+        { label: 'User agent', html: l => X.uaCell(l.userAgent) }
+      ], rows, { empty: { icon: 'key', title: 'No logs found', text: 'No token generations match the current filter.' } });
+    }
+
+    async function load() {
+      await X.withBusy(X.$('#refresh'), async () => {
+        try {
+          allLogs = (await X.api('/admin/token/data')).logs || [];
+          X.stats(X.$('#stats'), [
+            { label: 'Generations', value: allLogs.length.toLocaleString(), tone: 'violet' },
+            { label: 'Tokens produced', value: allLogs.reduce((s, l) => s + (l.quantity || 0), 0).toLocaleString(), tone: 'pink' },
+            { label: 'Unique IPs', value: new Set(allLogs.map(l => l.ip)).size.toLocaleString(), tone: 'sky' }
+          ]);
+          render();
+        } catch (err) {
+          content.innerHTML = '';
+          X.toast(err.message, 'error');
+        }
+      });
+    }
+
+    X.$('#search').addEventListener('input', render);
+    X.$('#typeFilter').addEventListener('change', render);
+    X.$('#refresh').addEventListener('click', load);
+    load();
+  </script>
+</body>
+</html>

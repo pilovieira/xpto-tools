@@ -1,288 +1,77 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>XPTO Shortener - Admin Login</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg-primary: #0b0f19;
-      --bg-secondary: #111827;
-      --accent-purple: #8b5cf6;
-      --accent-pink: #ec4899;
-      --text-main: #f3f4f6;
-      --text-muted: #9ca3af;
-      --glass-bg: rgba(17, 24, 39, 0.7);
-      --glass-border: rgba(255, 255, 255, 0.08);
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      background-color: var(--bg-primary);
-      background-image:
-        radial-gradient(at 0% 0%, rgba(139, 92, 246, 0.15) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.15) 0px, transparent 50%);
-      color: var(--text-main);
-      font-family: 'Outfit', sans-serif;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      overflow: hidden;
-    }
-
-    .login-container {
-      width: 100%;
-      max-width: 440px;
-      position: relative;
-    }
-
-    /* Glowing decorative circles */
-    .glow-circle {
-      position: absolute;
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      filter: blur(50px);
-      z-index: -1;
-    }
-
-    .glow-1 {
-      top: -30px;
-      left: -30px;
-      background: var(--accent-purple);
-    }
-
-    .glow-2 {
-      bottom: -30px;
-      right: -30px;
-      background: var(--accent-pink);
-    }
-
-    .login-card {
-      background: var(--glass-bg);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid var(--glass-border);
-      border-radius: 16px;
-      padding: 40px 32px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-      animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .header {
-      text-align: center;
-      margin-bottom: 32px;
-    }
-
-    .logo-text {
-      font-size: 32px;
-      font-weight: 600;
-      letter-spacing: 2px;
-      background: linear-gradient(135deg, #a78bfa 0%, #f472b6 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 8px;
-    }
-
-    .subtitle {
-      font-size: 14px;
-      color: var(--text-muted);
-    }
-
-    .form-group {
-      margin-bottom: 24px;
-      position: relative;
-    }
-
-    label {
-      display: block;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    input {
-      width: 100%;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--glass-border);
-      border-radius: 8px;
-      padding: 14px 16px;
-      color: var(--text-main);
-      font-family: inherit;
-      font-size: 15px;
-      transition: all 0.3s ease;
-    }
-
-    input:focus {
-      outline: none;
-      border-color: rgba(139, 92, 246, 0.5);
-      background: rgba(255, 255, 255, 0.08);
-      box-shadow: 0 0 15px rgba(139, 92, 246, 0.25);
-    }
-
-    .btn-login {
-      width: 100%;
-      background: linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-pink) 100%);
-      border: none;
-      border-radius: 8px;
-      color: white;
-      padding: 16px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
-      margin-top: 8px;
-    }
-
-    .btn-login:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(139, 92, 246, 0.6);
-    }
-
-    .btn-login:active {
-      transform: translateY(1px);
-    }
-
-    .error-msg {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.25);
-      color: #fca5a5;
-      padding: 12px 16px;
-      border-radius: 8px;
-      font-size: 14px;
-      margin-bottom: 24px;
-      display: none;
-      animation: shake 0.4s ease-in-out;
-    }
-
-    @keyframes shake {
-
-      0%,
-      100% {
-        transform: translateX(0);
-      }
-
-      25% {
-        transform: translateX(-6px);
-      }
-
-      75% {
-        transform: translateX(6px);
-      }
-    }
-
-    .back-link {
-      text-align: center;
-      margin-top: 24px;
-    }
-
-    .back-link a {
-      color: var(--text-muted);
-      font-size: 13px;
-      text-decoration: none;
-      transition: color 0.3s;
-    }
-
-    .back-link a:hover {
-      color: var(--accent-purple);
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Login — XPTO Tools</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/xpto.css">
+  <script src="/public/xpto.js"></script>
 </head>
-
-<body>
-  <div class="login-container">
-    <div class="glow-circle glow-1"></div>
-    <div class="glow-circle glow-2"></div>
-
-    <div class="login-card">
-      <div class="header">
-        <div class="logo-text">XPTO</div>
-        <div class="subtitle">Admin Dashboard Authentication</div>
+<body data-area="auth">
+  <div class="auth-wrap">
+    <div class="auth-card card stack" style="gap:22px">
+      <div class="stack" style="gap:14px">
+        <a class="brand" href="/"><span class="brand-mark">X</span><span>XPTO <small>Admin</small></span></a>
+        <div>
+          <h1>Welcome back</h1>
+          <p class="muted">Sign in to manage your tools.</p>
+        </div>
       </div>
 
-      <div id="error" class="error-msg">Invalid email or password.</div>
+      <div id="error" class="alert hidden" role="alert"></div>
 
-      <form id="loginForm" onsubmit="handleLogin(event)">
-        <div class="form-group">
-          <label for="email">Email Address</label>
-          <input type="email" id="email" required placeholder="admin@xpto.com" autocomplete="email">
+      <form id="loginForm" class="stack">
+        <div class="field">
+          <label for="email">Email</label>
+          <input class="input" type="email" id="email" required placeholder="admin@example.com" autocomplete="username" autofocus>
         </div>
-
-        <div class="form-group">
+        <div class="field">
           <label for="password">Password</label>
-          <input type="password" id="password" required placeholder="••••••••" autocomplete="current-password">
+          <input class="input" type="password" id="password" required placeholder="••••••••" autocomplete="current-password">
         </div>
-
-        <button type="submit" class="btn-login" id="submitBtn">Login</button>
+        <button class="btn btn-primary btn-lg btn-block" type="submit" id="submitBtn">Sign in</button>
       </form>
 
-      <div class="back-link">
-        <a href="/">← Back to Shortener</a>
-      </div>
+      <a class="muted" href="/" style="font-size:14px; text-align:center">← Back to tools</a>
     </div>
   </div>
 
+  <div style="position:fixed; top:14px; right:14px"><button class="btn btn-ghost btn-icon" id="theme" aria-label="Toggle theme"></button></div>
+
   <script>
-    async function handleLogin(event) {
-      event.preventDefault();
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      const errorDiv = document.getElementById('error');
-      const submitBtn = document.getElementById('submitBtn');
+    const root = document.documentElement;
+    const themeBtn = X.$('#theme');
+    const paint = () => { themeBtn.innerHTML = X.icon(root.dataset.theme === 'light' ? 'moon' : 'sun'); };
+    paint();
+    themeBtn.addEventListener('click', () => {
+      root.dataset.theme = root.dataset.theme === 'light' ? 'dark' : 'light';
+      try { localStorage.setItem('xpto-theme', root.dataset.theme); } catch { /* storage unavailable */ }
+      paint();
+    });
 
-      errorDiv.style.display = 'none';
-      submitBtn.innerText = 'Verifying...';
+    const errorBox = X.$('#error');
+    const submitBtn = X.$('#submitBtn');
+
+    X.$('#loginForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      errorBox.classList.add('hidden');
       submitBtn.disabled = true;
-
+      submitBtn.textContent = 'Verifying…';
       try {
-        const response = await fetch('/admin/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ email, password })
-        });
-
-        if (response.ok) {
-          window.location.href = '/admin';
-        } else {
-          errorDiv.style.display = 'block';
-          submitBtn.innerText = 'Login';
-          submitBtn.disabled = false;
-        }
+        await X.api('/admin/login', { method: 'POST', body: { email: X.$('#email').value, password: X.$('#password').value } });
+        location.href = '/admin';
       } catch (err) {
-        errorDiv.innerText = 'Connection error. Please try again.';
-        errorDiv.style.display = 'block';
-        submitBtn.innerText = 'Login';
+        errorBox.textContent = err.status === 401 ? 'Invalid email or password.' : err.message;
+        errorBox.classList.remove('hidden');
         submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign in';
       }
-    }
+    });
   </script>
 </body>
-
 </html>

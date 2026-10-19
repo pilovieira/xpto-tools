@@ -1,680 +1,232 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Image → PDF</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Image to PDF — XPTO Tools</title>
+  <meta name="description" content="Combine images into a single PDF.">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/xpto.css">
+  <script src="/public/xpto.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg: #0f0f13;
-      --surface: #1a1a22;
-      --surface2: #23232f;
-      --border: #2e2e3e;
-      --accent: #7b61ff;
-      --accent-dim: rgba(123, 97, 255, 0.15);
-      --accent-glow: rgba(123, 97, 255, 0.35);
-      --text: #e8e8f0;
-      --muted: #7a7a96;
-      --success: #4ade80;
-      --danger: #f87171;
-      --radius: 12px;
-      --font: 'Inter', system-ui, sans-serif;
-    }
-
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 48px 20px 80px;
-    }
-
-    header {
-      text-align: center;
-      margin-bottom: 48px;
-    }
-
-    .logo {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-
-    .logo-icon {
-      width: 40px;
-      height: 40px;
-      background: var(--accent);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-    }
-
-    h1 {
-      font-size: 2rem;
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      background: linear-gradient(135deg, #fff 40%, var(--accent));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .subtitle {
-      color: var(--muted);
-      font-size: 0.9rem;
-      margin-top: 6px;
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      width: 100%;
-      max-width: 760px;
-      overflow: hidden;
-    }
-
-    /* Drop zone */
-    #drop-zone {
-      border: 2px dashed var(--border);
-      border-radius: var(--radius);
-      margin: 24px;
-      padding: 52px 24px;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-      position: relative;
-    }
-
-    #drop-zone:hover,
-    #drop-zone.dragover {
-      border-color: var(--accent);
-      background: var(--accent-dim);
-    }
-
-    #drop-zone input[type="file"] {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
-      width: 100%;
-      height: 100%;
-    }
-
-    .drop-icon {
-      font-size: 2.5rem;
-      margin-bottom: 12px;
-      opacity: 0.6;
-    }
-
-    .drop-title {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-
-    .drop-sub {
-      font-size: 0.82rem;
-      color: var(--muted);
-    }
-
-    /* Image list */
-    #image-section {
-      display: none;
-      flex-direction: column;
-    }
-
-    .section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 24px 12px;
-      border-top: 1px solid var(--border);
-    }
-
-    .section-title {
-      font-size: 0.8rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-    }
-
-    .count-badge {
-      background: var(--accent-dim);
-      color: var(--accent);
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 2px 9px;
-      border-radius: 99px;
-    }
-
-    #image-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      max-height: 380px;
-      overflow-y: auto;
-      padding: 0 24px 16px;
-    }
-
-    #image-list::-webkit-scrollbar { width: 6px; }
-    #image-list::-webkit-scrollbar-track { background: transparent; }
-    #image-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
+    .img-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; }
     .img-item {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 10px 0;
-      border-bottom: 1px solid var(--border);
-      user-select: none;
+      display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px;
+      transition: border-color .15s, opacity .15s;
     }
-
-    .img-item:last-child { border-bottom: none; }
-
-    .img-thumb {
-      width: 48px;
-      height: 48px;
-      object-fit: cover;
-      border-radius: 6px;
-      background: var(--surface2);
-      flex-shrink: 0;
-    }
-
-    .img-meta {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .img-name {
-      font-size: 0.875rem;
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .img-size {
-      font-size: 0.75rem;
-      color: var(--muted);
-      margin-top: 2px;
-    }
-
-    .img-order {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--muted);
-      width: 20px;
-      text-align: center;
-      flex-shrink: 0;
-    }
-
-    .img-actions {
-      display: flex;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-
-    .icon-btn {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--muted);
-      border-radius: 6px;
-      width: 30px;
-      height: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      font-size: 13px;
-      transition: color 0.15s, border-color 0.15s, background 0.15s;
-    }
-
-    .icon-btn:hover { color: var(--text); border-color: var(--muted); }
-    .icon-btn.danger:hover { color: var(--danger); border-color: var(--danger); background: rgba(248,113,113,0.08); }
-
-    /* Options */
-    .options-row {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 16px 24px;
-      border-top: 1px solid var(--border);
-      flex-wrap: wrap;
-    }
-
-    .opt-label {
-      font-size: 0.8rem;
-      color: var(--muted);
-      font-weight: 500;
-    }
-
-    .select-sm {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 7px;
-      padding: 5px 10px;
-      font-size: 0.82rem;
-      cursor: pointer;
-      font-family: var(--font);
-      outline: none;
-    }
-
-    .select-sm:focus { border-color: var(--accent); }
-
-    /* Actions */
-    .actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 20px 24px;
-      border-top: 1px solid var(--border);
-      background: var(--surface2);
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      padding: 10px 20px;
-      border-radius: 8px;
-      font-size: 0.875rem;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      font-family: var(--font);
-      transition: opacity 0.15s, transform 0.1s;
-    }
-
-    .btn:active { transform: scale(0.97); }
-
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-      box-shadow: 0 0 20px var(--accent-glow);
-    }
-
-    .btn-primary:hover { opacity: 0.88; }
-    .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
-
-    .btn-ghost {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--muted);
-    }
-
-    .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
-
-    /* Progress */
-    #progress-wrap {
-      display: none;
-      flex-direction: column;
-      gap: 8px;
-      padding: 16px 24px;
-      border-top: 1px solid var(--border);
-    }
-
-    .progress-label {
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
-
-    .progress-bar-bg {
-      height: 5px;
-      background: var(--border);
-      border-radius: 99px;
-      overflow: hidden;
-    }
-
-    .progress-bar-fill {
-      height: 100%;
-      background: var(--accent);
-      border-radius: 99px;
-      width: 0%;
-      transition: width 0.2s;
-    }
-
-    /* Toast */
-    #toast {
-      position: fixed;
-      bottom: 32px;
-      left: 50%;
-      transform: translateX(-50%) translateY(20px);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 12px 22px;
-      border-radius: 99px;
-      font-size: 0.85rem;
-      font-weight: 500;
-      opacity: 0;
-      transition: opacity 0.25s, transform 0.25s;
-      pointer-events: none;
-      white-space: nowrap;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
-      z-index: 999;
-    }
-
-    #toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
-
-    #toast.success { border-color: var(--success); color: var(--success); }
-    #toast.error { border-color: var(--danger); color: var(--danger); }
-
-    /* Drag handle style */
-    .drag-handle {
-      cursor: grab;
-      color: var(--border);
-      font-size: 14px;
-      padding: 0 4px;
-      transition: color 0.15s;
-    }
-
-    .drag-handle:hover { color: var(--muted); }
-    .img-item.dragging { opacity: 0.4; }
-    .img-item.drag-over { border-top: 2px solid var(--accent); }
+    .img-item.dragging { opacity: .4; }
+    .img-item.drag-over { border-color: var(--accent); background: var(--accent-soft); }
+    .grip { color: var(--faint); cursor: grab; }
+    .img-order { width: 24px; text-align: center; font: 600 13px var(--mono); color: var(--muted); }
+    .img-thumb { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-2); background: var(--surface-3); }
+    .img-meta { flex: 1; min-width: 0; }
+    .img-name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .img-size { color: var(--muted); font-size: 12.5px; }
+    .img-actions { display: flex; gap: 4px; }
   </style>
 </head>
-<body>
+<body data-area="public" data-active="image-to-pdf">
+  <main class="container narrow">
+    <div data-page-head data-tool="image-to-pdf"></div>
 
-<header>
-  <div class="logo">
-    <div class="logo-icon">📄</div>
-    <h1>Image → PDF</h1>
-  </div>
-  <p class="subtitle">Upload images, reorder them, and export as a single PDF — one image per page.</p>
-</header>
+    <section class="card stack">
+      <label class="dropzone" id="dropZone">
+        <svg class="icon" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></svg>
+        <strong>Drop images here, or click to browse</strong>
+        <span>PNG, JPG or WebP · multiple files allowed</span>
+        <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" multiple>
+      </label>
 
-<div class="card">
-  <!-- Drop Zone -->
-  <div id="drop-zone">
-    <input type="file" id="file-input" accept="image/png,image/jpeg,image/jpg" multiple />
-    <div class="drop-icon">🖼️</div>
-    <div class="drop-title">Drop images here or click to browse</div>
-    <div class="drop-sub">Supports PNG and JPG &nbsp;·&nbsp; Multiple files allowed</div>
-  </div>
+      <div id="listSection" class="stack hidden">
+        <div class="row between">
+          <div class="card-title">Pages</div>
+          <span class="badge badge-accent" id="count">0 images</span>
+        </div>
+        <ul class="img-list" id="list"></ul>
 
-  <!-- Image list -->
-  <div id="image-section">
-    <div class="section-header">
-      <span class="section-title">Pages</span>
-      <span class="count-badge" id="count-badge">0 images</span>
-    </div>
-    <ul id="image-list"></ul>
+        <div class="row" style="padding-top:6px">
+          <div class="field" style="flex:1; min-width:160px"><label for="pageSize">Page size</label>
+            <select class="select" id="pageSize">
+              <option value="a4">A4</option><option value="letter">Letter</option>
+              <option value="a3">A3</option><option value="fit">Fit to image</option>
+            </select>
+          </div>
+          <div class="field" style="flex:1; min-width:160px"><label for="orientation">Orientation</label>
+            <select class="select" id="orientation">
+              <option value="auto">Auto (per image)</option><option value="portrait">Portrait</option><option value="landscape">Landscape</option>
+            </select>
+          </div>
+        </div>
 
-    <!-- Options -->
-    <div class="options-row">
-      <span class="opt-label">Page size</span>
-      <select class="select-sm" id="page-size">
-        <option value="a4">A4</option>
-        <option value="letter">Letter</option>
-        <option value="a3">A3</option>
-        <option value="fit">Fit to image</option>
-      </select>
-      <span class="opt-label" style="margin-left:8px">Orientation</span>
-      <select class="select-sm" id="orientation">
-        <option value="auto">Auto (per image)</option>
-        <option value="portrait">Portrait</option>
-        <option value="landscape">Landscape</option>
-      </select>
-    </div>
+        <div id="progressWrap" class="stack hidden" style="gap:8px">
+          <div class="muted" id="progressLabel" style="font-size:13px">Processing…</div>
+          <div class="progress"><i id="progressBar"></i></div>
+        </div>
 
-    <!-- Progress -->
-    <div id="progress-wrap">
-      <div class="progress-label" id="progress-label">Processing…</div>
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="progress-bar"></div>
+        <div class="row">
+          <button class="btn btn-primary btn-lg" id="generateBtn"></button>
+          <button class="btn" id="addMoreBtn"></button>
+          <span class="spacer"></span>
+          <button class="btn btn-danger" id="clearBtn"></button>
+        </div>
       </div>
-    </div>
+    </section>
+  </main>
 
-    <!-- Actions -->
-    <div class="actions">
-      <button class="btn btn-primary" id="generate-btn">
-        ⬇ Generate PDF
-      </button>
-      <button class="btn btn-ghost" id="add-more-btn">+ Add more</button>
-      <button class="btn btn-ghost" id="clear-btn" style="margin-left:auto; color: var(--danger); border-color: var(--danger)">Clear all</button>
-    </div>
-  </div>
-</div>
+  <script>
+    const { jsPDF } = window.jspdf;
+    const PAGE_SIZES = { a4: [595.28, 841.89], letter: [612, 792], a3: [841.89, 1190.55] };
 
-<div id="toast"></div>
+    let images = []; // { file, url, name, size }
+    let dragSrc = null;
 
-<script>
-  const { jsPDF } = window.jspdf;
+    const fileInput = X.$('#fileInput');
+    const dropZone = X.$('#dropZone');
+    const listSection = X.$('#listSection');
+    const list = X.$('#list');
+    const generateBtn = X.$('#generateBtn');
 
-  let images = []; // [{file, url, name, size}]
-  let dragSrcIdx = null;
+    generateBtn.innerHTML = `${X.icon('download', 'icon-sm')} Generate PDF`;
+    X.$('#addMoreBtn').innerHTML = `${X.icon('plus', 'icon-sm')} Add more`;
+    X.$('#clearBtn').innerHTML = `${X.icon('trash', 'icon-sm')} Clear all`;
 
-  const fileInput   = document.getElementById('file-input');
-  const dropZone    = document.getElementById('drop-zone');
-  const imageSection= document.getElementById('image-section');
-  const imageList   = document.getElementById('image-list');
-  const countBadge  = document.getElementById('count-badge');
-  const generateBtn = document.getElementById('generate-btn');
-  const addMoreBtn  = document.getElementById('add-more-btn');
-  const clearBtn    = document.getElementById('clear-btn');
-  const progressWrap= document.getElementById('progress-wrap');
-  const progressBar = document.getElementById('progress-bar');
-  const progressLbl = document.getElementById('progress-label');
-  const pageSizeEl  = document.getElementById('page-size');
-  const orientEl    = document.getElementById('orientation');
+    /* ── Adding files ── */
+    fileInput.addEventListener('change', e => { addFiles(e.target.files); fileInput.value = ''; });
+    X.$('#addMoreBtn').addEventListener('click', () => fileInput.click());
 
-  /* ── File input ── */
-  fileInput.addEventListener('change', e => addFiles(e.target.files));
+    ['dragenter', 'dragover'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('dragover'); }));
+    ['dragleave', 'drop'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.remove('dragover'); }));
+    dropZone.addEventListener('drop', e => addFiles(e.dataTransfer.files));
 
-  addMoreBtn.addEventListener('click', () => {
-    const inp = document.createElement('input');
-    inp.type = 'file';
-    inp.accept = 'image/png,image/jpeg,image/jpg';
-    inp.multiple = true;
-    inp.onchange = e => addFiles(e.target.files);
-    inp.click();
-  });
-
-  /* ── Drag & drop onto drop zone ── */
-  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-  dropZone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-    addFiles(e.dataTransfer.files);
-  });
-
-  /* ── Add files ── */
-  function addFiles(fileList) {
-    const valid = Array.from(fileList).filter(f => f.type.startsWith('image/'));
-    if (!valid.length) { showToast('No valid image files found.', 'error'); return; }
-    valid.forEach(f => {
-      const url = URL.createObjectURL(f);
-      images.push({ file: f, url, name: f.name, size: f.size });
-    });
-    renderList();
-    imageSection.style.display = 'flex';
-    imageSection.style.flexDirection = 'column';
-  }
-
-  clearBtn.addEventListener('click', () => {
-    images.forEach(i => URL.revokeObjectURL(i.url));
-    images = [];
-    renderList();
-    imageSection.style.display = 'none';
-  });
-
-  /* ── Render list ── */
-  function renderList() {
-    imageList.innerHTML = '';
-    countBadge.textContent = images.length === 1 ? '1 image' : `${images.length} images`;
-
-    images.forEach((img, idx) => {
-      const li = document.createElement('li');
-      li.className = 'img-item';
-      li.draggable = true;
-      li.dataset.idx = idx;
-
-      li.innerHTML = `
-        <span class="drag-handle" title="Drag to reorder">⠿</span>
-        <span class="img-order">${idx + 1}</span>
-        <img class="img-thumb" src="${img.url}" alt="${img.name}" />
-        <div class="img-meta">
-          <div class="img-name" title="${img.name}">${img.name}</div>
-          <div class="img-size">${formatBytes(img.size)}</div>
-        </div>
-        <div class="img-actions">
-          <button class="icon-btn" data-action="up" title="Move up">↑</button>
-          <button class="icon-btn" data-action="down" title="Move down">↓</button>
-          <button class="icon-btn danger" data-action="remove" title="Remove">✕</button>
-        </div>
-      `;
-
-      li.addEventListener('click', e => {
-        const action = e.target.dataset.action;
-        if (action === 'up' && idx > 0) { swap(idx, idx - 1); }
-        else if (action === 'down' && idx < images.length - 1) { swap(idx, idx + 1); }
-        else if (action === 'remove') { URL.revokeObjectURL(images[idx].url); images.splice(idx, 1); renderList(); if (!images.length) imageSection.style.display = 'none'; }
-      });
-
-      // Drag reorder
-      li.addEventListener('dragstart', e => { dragSrcIdx = idx; li.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
-      li.addEventListener('dragend', () => { li.classList.remove('dragging'); document.querySelectorAll('.img-item').forEach(el => el.classList.remove('drag-over')); });
-      li.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; document.querySelectorAll('.img-item').forEach(el => el.classList.remove('drag-over')); li.classList.add('drag-over'); });
-      li.addEventListener('drop', e => { e.preventDefault(); li.classList.remove('drag-over'); if (dragSrcIdx !== null && dragSrcIdx !== idx) { const moved = images.splice(dragSrcIdx, 1)[0]; images.splice(idx, 0, moved); renderList(); } });
-
-      imageList.appendChild(li);
-    });
-  }
-
-  function swap(a, b) { [images[a], images[b]] = [images[b], images[a]]; renderList(); }
-
-  /* ── Generate PDF ── */
-  generateBtn.addEventListener('click', async () => {
-    if (!images.length) return;
-
-    generateBtn.disabled = true;
-    progressWrap.style.display = 'flex';
-    progressBar.style.width = '0%';
-
-    const pageSize  = pageSizeEl.value;
-    const orientPref = orientEl.value;
-
-    try {
-      let doc = null;
-
-      for (let i = 0; i < images.length; i++) {
-        progressLbl.textContent = `Processing image ${i + 1} of ${images.length}…`;
-        progressBar.style.width = `${((i) / images.length) * 90}%`;
-
-        const { imgData, iw, ih } = await loadImage(images[i].url);
-
-        // Determine page dimensions
-        let pw, ph;
-        if (pageSize === 'fit') {
-          pw = iw * 0.75; // px to pt (72dpi)
-          ph = ih * 0.75;
-        } else {
-          const sizes = { a4: [595.28, 841.89], letter: [612, 792], a3: [841.89, 1190.55] };
-          [pw, ph] = sizes[pageSize];
-        }
-
-        // Determine orientation
-        let ort;
-        if (orientPref === 'auto') { ort = iw >= ih ? 'landscape' : 'portrait'; }
-        else { ort = orientPref; }
-
-        if (ort === 'landscape') { [pw, ph] = [Math.max(pw, ph), Math.min(pw, ph)]; }
-        else { [pw, ph] = [Math.min(pw, ph), Math.max(pw, ph)]; }
-
-        // Fit image inside page with margins
-        const margin = pageSize === 'fit' ? 0 : 20;
-        const maxW = pw - margin * 2;
-        const maxH = ph - margin * 2;
-        const scale = Math.min(maxW / iw, maxH / ih);
-        const drawW = iw * scale;
-        const drawH = ih * scale;
-        const x = (pw - drawW) / 2;
-        const y = (ph - drawH) / 2;
-
-        if (!doc) {
-          doc = new jsPDF({ orientation: ort, unit: 'pt', format: pageSize === 'fit' ? [pw, ph] : pageSize });
-          const actualW = doc.internal.pageSize.getWidth();
-          const actualH = doc.internal.pageSize.getHeight();
-          const s2 = Math.min((actualW - margin*2) / iw, (actualH - margin*2) / ih);
-          doc.addImage(imgData, 'JPEG', (actualW - iw*s2)/2, (actualH - ih*s2)/2, iw*s2, ih*s2);
-        } else {
-          doc.addPage(pageSize === 'fit' ? [pw, ph] : pageSize, ort);
-          const actualW = doc.internal.pageSize.getWidth();
-          const actualH = doc.internal.pageSize.getHeight();
-          const s2 = Math.min((actualW - margin*2) / iw, (actualH - margin*2) / ih);
-          doc.addImage(imgData, 'JPEG', (actualW - iw*s2)/2, (actualH - ih*s2)/2, iw*s2, ih*s2);
-        }
-
-        await sleep(0); // let UI breathe
-      }
-
-      progressBar.style.width = '100%';
-      progressLbl.textContent = 'Saving PDF…';
-      await sleep(50);
-
-      const filename = `images-${Date.now()}.pdf`;
-      doc.save(filename);
-      showToast(`✓ PDF saved — ${images.length} page${images.length > 1 ? 's' : ''}`, 'success');
-    } catch (err) {
-      console.error(err);
-      showToast('Something went wrong. Please try again.', 'error');
-    } finally {
-      generateBtn.disabled = false;
-      setTimeout(() => { progressWrap.style.display = 'none'; }, 800);
+    function addFiles(fileList) {
+      const valid = [...fileList].filter(f => f.type.startsWith('image/'));
+      if (!valid.length) return X.toast('No valid image files found.', 'error');
+      valid.forEach(f => images.push({ file: f, url: URL.createObjectURL(f), name: f.name, size: f.size }));
+      render();
     }
-  });
 
-  /* ── Helpers ── */
-  function loadImage(url) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        canvas.getContext('2d').drawImage(img, 0, 0);
-        resolve({ imgData: canvas.toDataURL('image/jpeg', 0.95), iw: img.naturalWidth, ih: img.naturalHeight });
-      };
-      img.onerror = reject;
-      img.src = url;
+    X.$('#clearBtn').addEventListener('click', () => {
+      images.forEach(i => URL.revokeObjectURL(i.url));
+      images = [];
+      render();
     });
-  }
 
-  function formatBytes(b) {
-    if (b < 1024) return b + ' B';
-    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
-    return (b / 1048576).toFixed(1) + ' MB';
-  }
+    /* ── List ── */
+    function render() {
+      listSection.classList.toggle('hidden', images.length === 0);
+      X.$('#count').textContent = images.length === 1 ? '1 image' : `${images.length} images`;
+      list.innerHTML = images.map((img, i) => `
+        <li class="img-item" draggable="true" data-i="${i}">
+          <span class="grip" title="Drag to reorder">${X.icon('grip')}</span>
+          <span class="img-order">${i + 1}</span>
+          <img class="img-thumb" src="${img.url}" alt="">
+          <div class="img-meta"><div class="img-name" title="${X.esc(img.name)}">${X.esc(img.name)}</div><div class="img-size">${X.fmtBytes(img.size)}</div></div>
+          <div class="img-actions">
+            <button class="btn btn-ghost btn-icon btn-sm" data-act="up" title="Move up" ${i === 0 ? 'disabled' : ''}>${X.icon('up', 'icon-sm')}</button>
+            <button class="btn btn-ghost btn-icon btn-sm" data-act="down" title="Move down" ${i === images.length - 1 ? 'disabled' : ''}>${X.icon('down', 'icon-sm')}</button>
+            <button class="btn btn-danger btn-icon btn-sm" data-act="remove" title="Remove">${X.icon('x', 'icon-sm')}</button>
+          </div>
+        </li>`).join('');
+    }
 
-  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+    const move = (from, to) => { images.splice(to, 0, images.splice(from, 1)[0]); render(); };
 
-  let toastTimer;
-  function showToast(msg, type = '') {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className = 'show' + (type ? ' ' + type : '');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { t.className = ''; }, 3200);
-  }
-</script>
+    list.addEventListener('click', e => {
+      const btn = e.target.closest('[data-act]');
+      if (!btn) return;
+      const i = +btn.closest('.img-item').dataset.i;
+      if (btn.dataset.act === 'up') move(i, i - 1);
+      else if (btn.dataset.act === 'down') move(i, i + 1);
+      else { URL.revokeObjectURL(images[i].url); images.splice(i, 1); render(); }
+    });
+
+    const clearDragOver = () => X.$$('.img-item', list).forEach(el => el.classList.remove('drag-over'));
+    list.addEventListener('dragstart', e => { const li = e.target.closest('.img-item'); if (!li) return; dragSrc = +li.dataset.i; li.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+    list.addEventListener('dragend', e => { e.target.closest('.img-item')?.classList.remove('dragging'); clearDragOver(); });
+    list.addEventListener('dragover', e => { const li = e.target.closest('.img-item'); if (!li || dragSrc === null) return; e.preventDefault(); clearDragOver(); li.classList.add('drag-over'); });
+    list.addEventListener('drop', e => {
+      const li = e.target.closest('.img-item');
+      if (!li || dragSrc === null) return;
+      e.preventDefault();
+      const to = +li.dataset.i;
+      if (to !== dragSrc) move(dragSrc, to);
+      dragSrc = null;
+    });
+
+    /* ── PDF generation ── */
+    /** Decode an image and flatten it onto white (JPEG has no alpha) */
+    function loadImage(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+          resolve({ data: canvas.toDataURL('image/jpeg', 0.95), w: img.naturalWidth, h: img.naturalHeight });
+        };
+        img.onerror = () => reject(new Error('Could not decode an image'));
+        img.src = url;
+      });
+    }
+
+    const tick = () => new Promise(r => setTimeout(r, 0));
+
+    generateBtn.addEventListener('click', async () => {
+      if (!images.length) return;
+      const size = X.$('#pageSize').value;
+      const orientPref = X.$('#orientation').value;
+      const wrap = X.$('#progressWrap');
+      const bar = X.$('#progressBar');
+
+      generateBtn.disabled = true;
+      wrap.classList.remove('hidden');
+      bar.style.width = '0%';
+
+      try {
+        let doc = null;
+        for (let i = 0; i < images.length; i++) {
+          X.$('#progressLabel').textContent = `Processing image ${i + 1} of ${images.length}…`;
+          bar.style.width = `${(i / images.length) * 90}%`;
+
+          const { data, w, h } = await loadImage(images[i].url);
+          const orientation = orientPref === 'auto' ? (w >= h ? 'landscape' : 'portrait') : orientPref;
+
+          // Page dimensions in points (96dpi px → 72dpi pt for "fit")
+          let [pw, ph] = size === 'fit' ? [w * 0.75, h * 0.75] : PAGE_SIZES[size];
+          [pw, ph] = orientation === 'landscape' ? [Math.max(pw, ph), Math.min(pw, ph)] : [Math.min(pw, ph), Math.max(pw, ph)];
+
+          const margin = size === 'fit' ? 0 : 20;
+          const scale = Math.min((pw - margin * 2) / w, (ph - margin * 2) / h);
+          const dw = w * scale, dh = h * scale;
+
+          if (!doc) doc = new jsPDF({ orientation, unit: 'pt', format: [pw, ph] });
+          else doc.addPage([pw, ph], orientation);
+          doc.addImage(data, 'JPEG', (pw - dw) / 2, (ph - dh) / 2, dw, dh);
+          await tick();
+        }
+
+        bar.style.width = '100%';
+        X.$('#progressLabel').textContent = 'Saving PDF…';
+        await tick();
+        doc.save(`images-${Date.now()}.pdf`);
+        X.toast(`PDF saved — ${images.length} page${images.length > 1 ? 's' : ''}`);
+      } catch (err) {
+        console.error(err);
+        X.toast(err.message || 'Something went wrong. Please try again.', 'error');
+      } finally {
+        generateBtn.disabled = false;
+        setTimeout(() => wrap.classList.add('hidden'), 800);
+      }
+    });
+  </script>
 </body>
 </html>

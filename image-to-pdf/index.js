@@ -1,11 +1,7 @@
-const fs = require('fs');
-const path = require('path');
+const express = require('express');
+const { sendPage } = require('../util/http');
 
-const serveImageToPdfPage = (req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/html' });
-  res.end(fs.readFileSync(path.join(__dirname, 'index.html'), 'utf-8'));
-};
+const router = express.Router();
+router.get('/image-to-pdf', sendPage(__dirname, 'index.html'));
 
-module.exports = {
-  serveImageToPdfPage
-};
+module.exports = { router };

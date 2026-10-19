@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PDF Splitter Admin — XPTO Tools</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/xpto.css">
+  <script src="/public/xpto.js"></script>
+</head>
+<body data-area="admin" data-active="pdf-splitter">
+  <main class="container wide">
+    <div data-page-head data-tool="pdf-splitter"></div>
+    <div id="stats"></div>
+
+    <section class="card flush">
+      <div class="tabs">
+        <button class="tab active" data-tab="files">Stored PDFs</button>
+        <button class="tab" data-tab="logs">Upload history</button>
+        <span class="spacer"></span>
+        <button class="btn btn-icon btn-sm btn-ghost" id="refresh" title="Refresh" aria-label="Refresh" style="align-self:center"></button>
+      </div>
+      <div id="content"><div class="loader"></div></div>
+    </section>
+  </main>
+
+  <script>
+    let data = { files: [], logs: [] };
+    let tab = 'files';
+    const content = X.$('#content');
+    X.$('#refresh').innerHTML = X.icon('refresh', 'icon-sm');
+
+    function render() {
+      if (tab === 'files') {
+        X.table(content, [
+          { label: 'File', html: f => X.truncCell(f.filename, true) },
+          { label: 'Stored', html: f => X.timeCell(f.birthtime) },
+          { label: 'Size', th: 'num', cls: 'num', html: f => X.esc(X.fmtBytes(f.size)) },
+          { label: '', cls: 'actions', html: f => `<div class="cell-actions">
+              <a class="btn btn-sm" href="/admin/pdf-splitter/files/${encodeURIComponent(f.filename)}">${X.icon('download', 'icon-sm')} Download</a>
+              <button class="btn btn-sm btn-danger" data-delete="${X.esc(f.filename)}">${X.icon('trash', 'icon-sm')} Delete</button></div>` }
+        ], data.files, { empty: { icon: 'folder', title: 'No files on disk', text: 'Uploaded PDFs will appear here.' } });
+      } else {
+        X.table(content, [
+          { label: 'Time', html: l => X.timeCell(l.timestamp) },
+          { label: 'Original name', html: l => X.truncCell(l.filename) },
+          { label: 'Size', th: 'num', cls: 'num', html: l => X.esc(X.fmtBytes(l.filesize)) },
+          { label: 'Client IP', html: l => X.ipBadge(l.ip) },
+          { label: 'User agent', html: l => X.uaCell(l.userAgent) }
+        ], data.logs, { empty: { icon: 'list', title: 'No upload logs', text: 'No PDF splitter transactions have been logged yet.' } });
+      }
+    }
+
+    content.addEventListener('click', async e => {
+      const btn = e.target.closest('[data-delete]');
+      if (!btn) return;
+      const ok = await X.confirm('This removes the file from disk and clears its log entry.', { title: 'Delete this PDF?', confirmText: 'Delete' });
+      if (!ok) return;
+      try {
+        await X.api(`/admin/pdf-splitter/files/${encodeURIComponent(btn.dataset.delete)}`, { method: 'DELETE' });
+        X.toast('File deleted');
+        load();
+      } catch (err) {
+        X.toast(err.message, 'error');
+      }
+    });
+
+    X.$$('.tab').forEach(t => t.addEventListener('click', () => {
+      X.$$('.tab').forEach(x => x.classList.toggle('active', x === t));
+      tab = t.dataset.tab;
+      render();
+    }));
+
+    async function load() {
+      await X.withBusy(X.$('#refresh'), async () => {
+        try {
+          data = await X.api('/admin/pdf-splitter/data');
+          X.stats(X.$('#stats'), [
+            { label: 'Uploads logged', value: data.logs.length.toLocaleString(), tone: 'violet' },
+            { label: 'Size on disk', value: X.fmtBytes(data.files.reduce((s, f) => s + f.size, 0)), tone: 'teal' },
+            { label: 'Unique IPs', value: new Set(data.logs.map(l => l.ip)).size.toLocaleString(), tone: 'sky' }
+          ]);
+          render();
+        } catch (err) {
+          content.innerHTML = '';
+          X.toast(err.message, 'error');
+        }
+      });
+    }
+
+    X.$('#refresh').addEventListener('click', load);
+    load();
+  </script>
+</body>
+</html>

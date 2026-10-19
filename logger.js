@@ -1,4 +1,5 @@
 const { performance } = require('perf_hooks');
+const { clientIp } = require('./util/http');
 
 function getTimestamp() {
   const now = new Date();
@@ -25,7 +26,7 @@ function requestLogger(req, res, next) {
   const start = performance.now();
 
   // Extract client IP address
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
+  const ip = clientIp(req);
   const method = req.method;
   const url = req.originalUrl || req.url;
   const userAgent = req.headers['user-agent'] || req.headers['User-Agent'] || 'Unknown UA';

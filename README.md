@@ -11,16 +11,32 @@ A collection of lightweight, high-performance developer utilities powered by Nod
 
 ## 🚀 Included Tools
 
-### 1. 🔗 URL Shortener
-A fast, reliable URL shortening service using Redis for lightning-fast redirections.
-- **Shorten URLs**: Easily generate short hashes for any target URL.
-- **Analytics & Logs**: Detailed administration panel to track clicks, request referrers, user agents, and timestamps.
-- **Admin Dashboard**: Secure administrative UI to view, create, and delete shortened links in real-time.
+| Tool | Route | Notes |
+|---|---|---|
+| 🔗 URL Shortener | `/shortener` | Random collision-safe keys, http(s)-only validation, click counts and redirect logs |
+| 🔠 Base58 Converter | `/base58` | Bitcoin alphabet, UTF-8 safe, runs in the browser |
+| 🔑 Token Generator | `/token` | Hex / Base64 / Base62 / UUID / numeric, prefix, grouping, bulk export (Web Crypto) |
+| ✂️ PDF Splitter | `/pdf-splitter` | One PDF per page + ZIP. A copy of the upload is kept server-side for admin review (auto-deleted after `PDF_RETENTION_DAYS`) |
+| ✍️ PDF Signer | `/pdf-signer` | Drag/resize a signature image onto any page, fully client-side |
+| 🖼️ Image to PDF | `/image-to-pdf` | Reorder images, choose page size/orientation, fully client-side |
 
-### 2. 🔠 Base58 Converter
-An encoding/decoding utility using the Bitcoin-style Base58 alphabet (no lookalike characters like `0`, `O`, `I`, `l` to avoid human error).
-- **Encoder**: Turn numeric database IDs or strings into compact, URL-safe Base58 tokens.
-- **Decoder**: Translate Base58 hashes back to their original values instantly.
+Every tool with server-side activity has a dashboard under **`/admin`** (login required): logs, stats, and — for the shortener and PDF splitter — management actions.
+
+---
+
+## 🧱 Project layout
+
+```
+app.js                 Express bootstrap, security headers, route mounting
+util/                  db (Redis), auth (sessions + rate limit), http helpers, log helpers
+<tool>/index.js        Router for that tool: public page, API and admin endpoints
+<tool>/index.html      Public UI           <tool>/admin.html   Admin UI
+admin/                 Login + hub
+public/xpto.css        Design system (tokens, light/dark theme, components)
+public/xpto.js         Shared UI runtime: navbar, tool registry, toasts, modals, table helpers
+```
+
+New tool checklist: add an entry to `TOOLS` in `public/xpto.js`, create `<tool>/index.js` exporting a `router`, and mount it in `app.js`.
 
 ---
 
@@ -54,11 +70,9 @@ redis-cli ping
    ```bash
    npm install
    ```
-3. Create a `.env` file in the root directory (optional, if using custom Redis credentials):
-   ```env
-   PORT=5000
-   REDIS_HOST=127.0.0.1
-   REDIS_PORT=6379
+3. Copy `.env.example` to `.env` and set at least `ADMIN_EMAIL` and `ADMIN_PASSWORD`:
+   ```bash
+   cp .env.example .env
    ```
 
 ### Running the Application

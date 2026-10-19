@@ -1,10 +1,11 @@
 {
   "name": "xpto-tools",
   "version": "1.0.0",
-  "description": "XPTO Tools - URL Shortener and Base58 Utilities",
+  "description": "XPTO Tools - developer utilities suite",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "dev": "node --watch app.js"
   },
   "repository": {
     "type": "git",
@@ -19,9 +20,7 @@
   "dependencies": {
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
-    "http-server": "^14.1.1",
-    "ioredis": "^5.4.2",
-    "redis": "^4.7.0"
+    "ioredis": "^5.4.2"
   },
   "engines": {
     "node": "24"
