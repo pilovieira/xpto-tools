@@ -17,11 +17,14 @@ A collection of lightweight, high-performance developer utilities powered by Nod
 | 🔠 Base58 Converter | `/base58` | Bitcoin alphabet, UTF-8 safe, runs in the browser |
 | 🔑 Token Generator | `/token` | Hex / Base64 / Base62 / UUID / numeric, prefix, grouping, bulk export (Web Crypto) |
 | ✂️ PDF Splitter | `/pdf-splitter` | One PDF per page + ZIP. A copy of the upload is kept server-side for admin review (auto-deleted after `PDF_RETENTION_DAYS`) |
-| ✍️ PDF Signer | `/pdf-signer` | Drag/resize a signature image onto any page, fully client-side |
+| ✍️ PDF Signer | `/pdf-signer` | Drag/resize a signature image onto any page; signing runs in the browser, and the original, signed PDF and signature image are stored server-side for admin review (`SIGNER_RETENTION_DAYS`, default 30) |
 | 🖼️ Image to PDF | `/image-to-pdf` | Reorder images, choose page size/orientation, fully client-side |
 | 📉 Image Compressor | `/image-compressor` | Shrink photos to a target size in MB (or a quality %), JPEG/WebP, batch + ZIP. Compressed in the browser; a copy of each original and its result is kept server-side for admin review (`IMG_RETENTION_DAYS`, default 30) |
 
 Every tool with server-side activity has a dashboard under **`/admin`** (login required): logs, stats, and — for the shortener and PDF splitter — management actions.
+
+### 🛡️ Security guard
+`util/security.js` runs first on every request: it scores scanners (`/.env`, `/.git`, `*.php`, bursts of 404s) and failed admin logins per IP, **blocks** the offender (403, 24 h; IPv6 by /64) and **pushes an alert to your phone** through [ntfy](https://ntfy.sh). Set `SECURITY_NTFY_TOPIC` (a long random secret) in `.env` and subscribe to it in the ntfy app. Blocked IPs, incidents and a "send test alert" button live in **`/admin/security`**. See `.env.example` for the knobs. Handoff notes to replicate this on Luna Gestão: `docs/luna-gestao-security-handoff.md`.
 
 ---
 

@@ -13,7 +13,7 @@ const LOG_KEY = 'xpto-url:logs';
 
 const KEY_RE = /^[a-zA-Z0-9_-]{1,64}$/;
 // Top-level routes a custom slug must never shadow
-const RESERVED = new Set(['admin', 'api', 'public', 'shortener', 'base58', 'token', 'json', 'pdf-splitter', 'pdf-signer', 'image-to-pdf', 'favicon.ico', 'healthz']);
+const RESERVED = new Set(['admin', 'api', 'public', 'shortener', 'base58', 'token', 'json', 'pdf-splitter', 'pdf-signer', 'image-to-pdf', 'image-compressor', 'favicon.ico', 'healthz']);
 // No lookalike characters (0/o, 1/l/i); 32 symbols so the byte-to-char mapping is unbiased
 const ALPHABET = '23456789abcdefghijkmnpqrstuvwxyz';
 

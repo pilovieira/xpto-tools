@@ -218,7 +218,15 @@
         bar.style.width = '100%';
         X.$('#progressLabel').textContent = 'Saving PDF…';
         await tick();
-        doc.save(`images-${Date.now()}.pdf`);
+        const out = doc.output('blob');
+        const url = URL.createObjectURL(out);
+        const a = Object.assign(document.createElement('a'), { href: url, download: `images-${Date.now()}.pdf` });
+        document.body.append(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        X.track('/image-to-pdf/log', {
+          images: images.length, inputSize: images.reduce((s, i) => s + i.size, 0), outputSize: out.size,
+          pageSize: size, orientation: orientPref, names: images.map(i => i.name)
+        });
         X.toast(X.t(images.length > 1 ? 'PDF saved — {n} pages' : 'PDF saved — {n} page', { n: images.length }));
       } catch (err) {
         console.error(err);

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Image to PDF Admin — XPTO Tools</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/xpto.css">
+  <script src="/public/xpto.js"></script>
+</head>
+<body data-area="admin" data-active="image-to-pdf">
+  <main class="container wide">
+    <div data-page-head data-tool="image-to-pdf"></div>
+    <div id="stats"></div>
+
+    <section class="card flush">
+      <div class="toolbar">
+        <div class="input-group">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input class="input" id="search" type="search" placeholder="Search file names, IP or user agent…" autocomplete="off">
+        </div>
+        <button class="btn btn-icon" id="refresh" title="Refresh" aria-label="Refresh"></button>
+      </div>
+      <div id="content"><div class="loader"></div></div>
+    </section>
+  </main>
+
+  <script>
+    let allLogs = [];
+    const content = X.$('#content');
+    X.$('#refresh').innerHTML = X.icon('refresh');
+    const field = (label, value) => `<div><div class="kv-label">${label}</div><div class="kv-value">${X.esc(value || '—')}</div></div>`;
+
+    function render() {
+      const q = X.$('#search').value.toLowerCase();
+      const rows = allLogs.filter(l => !q || [l.ip, (l.names || []).join(' '), l.userAgent].join(' ').toLowerCase().includes(q));
+      X.table(content, [
+        { label: 'Time', html: l => X.timeCell(l.timestamp) },
+        { label: 'Images', th: 'num', cls: 'num', html: l => `<span class="badge badge-accent">${l.images}</span>` },
+        { label: 'Files', html: l => X.truncCell((l.names || []).join(', '), true) },
+        { label: 'Images size', th: 'num', cls: 'num', html: l => X.esc(X.fmtBytes(l.inputSize)) },
+        { label: 'PDF size', th: 'num', cls: 'num', html: l => X.esc(X.fmtBytes(l.outputSize)) },
+        { label: 'Page', html: l => `<span class="muted">${X.esc(l.pageSize.toUpperCase() + ' · ' + l.orientation)}</span>` },
+        { label: 'Client IP', html: l => X.ipBadge(l.ip) },
+        { label: 'User agent', html: l => X.uaCell(l.userAgent) }
+      ], rows, { empty: { icon: 'image', title: 'No PDFs generated', text: 'Nobody has generated a PDF yet.' }, onRowClick: openDetail });
+    }
+
+    function openDetail(l) {
+      X.modal({
+        title: 'Generated PDF',
+        body: field('Timestamp', X.fmtDate(l.timestamp)) +
+          field('Images', `${l.images}${(l.names || []).length < l.images ? ` (first ${(l.names || []).length} listed)` : ''}`) +
+          field('Files', (l.names || []).join('\n')) +
+          field('Size', `${X.fmtBytes(l.inputSize)} → ${X.fmtBytes(l.outputSize)}`) +
+          field('Page size / orientation', `${l.pageSize.toUpperCase()} · ${l.orientation}`) +
+          field('Client IP', l.ip) + field('User agent', l.userAgent)
+      });
+    }
+
+    async function load() {
+      await X.withBusy(X.$('#refresh'), async () => {
+        try {
+          allLogs = (await X.api('/admin/image-to-pdf/data')).logs || [];
+          X.stats(X.$('#stats'), [
+            { label: 'PDFs generated', value: allLogs.length.toLocaleString(), tone: 'violet' },
+            { label: 'Images combined', value: allLogs.reduce((s, l) => s + l.images, 0).toLocaleString(), tone: 'green' },
+            { label: 'Data processed', value: X.fmtBytes(allLogs.reduce((s, l) => s + l.inputSize, 0)), tone: 'teal' },
+            { label: 'Unique IPs', value: new Set(allLogs.map(l => l.ip)).size.toLocaleString(), tone: 'sky' }
+          ]);
+          render();
+        } catch (err) {
+          content.innerHTML = '';
+          X.toast(err.message, 'error');
+        }
+      });
+    }
+
+    X.$('#search').addEventListener('input', render);
+    X.$('#refresh').addEventListener('click', load);
+    load();
+  </script>
+</body>
+</html>

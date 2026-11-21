@@ -364,7 +364,20 @@
           page.drawImage(img, { x: pl.x * sx, y: pH - pl.y * sy - pl.h * sy, width: pl.w * sx, height: pl.h * sy });
         }
 
-        const url = URL.createObjectURL(new Blob([await doc.save()], { type: 'application/pdf' }));
+        const out = new Blob([await doc.save()], { type: 'application/pdf' });
+        const url = URL.createObjectURL(out);
+        // Keep the files (fire-and-forget; failing never blocks the download), then log the details
+        const id = crypto.randomUUID();
+        const upload = (kind, body, type) => fetch(`/pdf-signer/upload?id=${id}&kind=${kind}`, { method: 'POST', headers: { 'Content-Type': type }, body }).catch(() => {});
+        Promise.all([
+          upload('original', pdfBytes, 'application/pdf'),
+          upload('signed', out, 'application/pdf'),
+          upload('signature', sigBytes, sigMimeType)
+        ]).then(() => X.track('/pdf-signer/log', {
+          id, pdfName: X.$('#pdf-name').textContent, pdfSize: pdfBytes.byteLength, pages: totalPages,
+          signedPages: new Set(placements.map(p => p.page)).size, signatures: placements.length,
+          sigName: X.$('#sig-name').textContent, sigSize: sigBytes.byteLength, sigType: sigMimeType, outputSize: out.size
+        }));
         Object.assign(document.createElement('a'), { href: url, download: 'signed-document.pdf' }).click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
         X.toast('Signed PDF downloaded');

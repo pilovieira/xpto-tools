@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PDF Signer Admin — XPTO Tools</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/xpto.css">
+  <script src="/public/xpto.js"></script>
+</head>
+<body data-area="admin" data-active="pdf-signer">
+  <main class="container wide">
+    <div data-page-head data-tool="pdf-signer"></div>
+    <div id="stats"></div>
+
+    <section class="card flush">
+      <div class="toolbar">
+        <div class="input-group">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input class="input" id="search" type="search" placeholder="Search file name, IP or user agent…" autocomplete="off">
+        </div>
+        <button class="btn btn-icon" id="refresh" title="Refresh" aria-label="Refresh"></button>
+      </div>
+      <div id="content"><div class="loader"></div></div>
+    </section>
+  </main>
+
+  <script>
+    let allLogs = [];
+    let files = [];
+    const KIND_LABEL = { original: 'Original', signed: 'Signed', signature: 'Signature' };
+    const filesOf = l => l.id ? files.filter(f => f.filename.startsWith(l.id + '_')) : [];
+    const fileLinks = (l, cls = 'btn btn-sm') => filesOf(l).map(f => {
+      const kind = f.filename.slice(37).split('.')[0];
+      return `<a class="${cls}" href="/admin/pdf-signer/files/${encodeURIComponent(f.filename)}" title="${X.esc(X.fmtBytes(f.size))}">${X.icon('download', 'icon-sm')} ${KIND_LABEL[kind] || kind}</a>`;
+    }).join('');
+    const content = X.$('#content');
+    X.$('#refresh').innerHTML = X.icon('refresh');
+    const field = (label, value) => `<div><div class="kv-label">${label}</div><div class="kv-value">${X.esc(value || '—')}</div></div>`;
+
+    function render() {
+      const q = X.$('#search').value.toLowerCase();
+      const rows = allLogs.filter(l => !q || [l.ip, l.pdfName, l.sigName, l.userAgent].join(' ').toLowerCase().includes(q));
+      X.table(content, [
+        { label: 'Time', html: l => X.timeCell(l.timestamp) },
+        { label: 'Document', html: l => X.truncCell(l.pdfName, true) },
+        { label: 'Pages', th: 'num', cls: 'num', html: l => String(l.pages) },
+        { label: 'Signatures', th: 'num', cls: 'num', html: l => `<span class="badge badge-accent">${l.signatures}</span>` },
+        { label: 'PDF size', th: 'num', cls: 'num', html: l => X.esc(X.fmtBytes(l.pdfSize)) },
+        { label: 'Signed size', th: 'num', cls: 'num', html: l => X.esc(X.fmtBytes(l.outputSize)) },
+        { label: 'Signature image', html: l => X.truncCell(l.sigName, true) },
+        { label: 'Client IP', html: l => X.ipBadge(l.ip) },
+        { label: 'User agent', html: l => X.uaCell(l.userAgent) },
+        { label: 'Files', html: l => `<div class="cell-actions" style="justify-content:flex-start">${fileLinks(l) || '<span class="muted">—</span>'}</div>` },
+        { label: '', cls: 'actions', html: l => l.id ? `<button class="btn btn-sm btn-danger btn-icon" data-delete="${X.esc(l.id)}" title="Delete" aria-label="Delete">${X.icon('trash', 'icon-sm')}</button>` : '' }
+      ], rows, { empty: { icon: 'pen', title: 'No signed documents', text: 'Nobody has signed a PDF yet.' }, onRowClick: openDetail });
+    }
+
+    function openDetail(l) {
+      X.modal({
+        title: 'Signed document',
+        body: field('Timestamp', X.fmtDate(l.timestamp)) + field('Document', l.pdfName) +
+          field('Pages', `${l.pages} (signed on ${l.signedPages})`) + field('Signatures placed', String(l.signatures)) +
+          field('PDF size', `${X.fmtBytes(l.pdfSize)} → ${X.fmtBytes(l.outputSize)}`) +
+          field('Signature image', `${l.sigName || '—'} (${l.sigType || '—'}, ${X.fmtBytes(l.sigSize)})`) +
+          field('Client IP', l.ip) + field('User agent', l.userAgent) +
+          `<div><div class="kv-label">Stored files</div><div class="row">${fileLinks(l) || '<span class="muted">None (expired or deleted)</span>'}</div></div>`
+      });
+    }
+
+    async function load() {
+      await X.withBusy(X.$('#refresh'), async () => {
+        try {
+          const data = await X.api('/admin/pdf-signer/data');
+          allLogs = data.logs || [];
+          files = data.files || [];
+          X.stats(X.$('#stats'), [
+            { label: 'Documents signed', value: allLogs.length.toLocaleString(), tone: 'violet' },
+            { label: 'Signatures placed', value: allLogs.reduce((s, l) => s + l.signatures, 0).toLocaleString(), tone: 'amber' },
+            { label: 'PDF data processed', value: X.fmtBytes(allLogs.reduce((s, l) => s + l.pdfSize, 0)), tone: 'teal' },
+            { label: 'Size on disk', value: X.fmtBytes(files.reduce((s, f) => s + f.size, 0)), tone: 'pink' },
+            { label: 'Unique IPs', value: new Set(allLogs.map(l => l.ip)).size.toLocaleString(), tone: 'sky' }
+          ]);
+          render();
+        } catch (err) {
+          content.innerHTML = '';
+          X.toast(err.message, 'error');
+        }
+      });
+    }
+
+    content.addEventListener('click', async e => {
+      const btn = e.target.closest('[data-delete]');
+      if (!btn) return;
+      const ok = await X.confirm('This deletes the stored PDFs and signature image and clears the log entry.', { title: 'Delete this signing?', confirmText: 'Delete' });
+      if (!ok) return;
+      try {
+        await X.api(`/admin/pdf-signer/signings/${encodeURIComponent(btn.dataset.delete)}`, { method: 'DELETE' });
+        X.toast('File deleted');
+        load();
+      } catch (err) {
+        X.toast(err.message, 'error');
+      }
+    });
+
+    X.$('#search').addEventListener('input', render);
+    X.$('#refresh').addEventListener('click', load);
+    load();
+  </script>
+</body>
+</html>

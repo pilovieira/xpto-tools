@@ -15,6 +15,8 @@ if (process.env.TRUST_PROXY) {
   app.set('trust proxy', /^\d+$/.test(v) ? Number(v) : v === 'true' ? true : v === 'false' ? false : v);
 }
 
+// Blocked clients are dropped before anything else (and before logging, so they don't flood the journal)
+app.use(require('./util/security').guard);
 app.use(logger.requestLogger);
 app.use((req, res, next) => {
   res.set({
@@ -37,13 +39,14 @@ app.get('/healthz', async (req, res) => {
 });
 
 // The PDF and image uploads parse their own (raw) bodies; everything else is small JSON/forms
-const RAW_UPLOADS = new Set(['/pdf-splitter/upload', '/image-compressor/upload']);
+const RAW_UPLOADS = new Set(['/pdf-splitter/upload', '/image-compressor/upload', '/pdf-signer/upload']);
 const jsonBody = express.json({ limit: '100kb' });
 const formBody = express.urlencoded({ extended: false, limit: '100kb' });
 app.use((req, res, next) => (RAW_UPLOADS.has(req.path) ? next() : jsonBody(req, res, () => formBody(req, res, next))));
 
 // Tool modules – each one owns its public pages, API and admin dashboard
 app.use(require('./admin').router);
+app.use(require('./security').router);
 app.use(require('./shortener').router);
 app.use(require('./base58').router);
 app.use(require('./token').router);

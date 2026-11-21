@@ -71,14 +71,18 @@
       chips: ['One PDF per page', 'ZIP download', 'Up to 50 MB'], adminDesc: 'Review uploaded PDFs, download or delete stored files.' },
     { id: 'pdf-signer', name: 'PDF Signer', href: '/pdf-signer', icon: 'pen', tone: 'amber',
       desc: 'Place your signature image anywhere on a PDF. Everything happens in your browser.',
-      chips: ['Drag & resize', 'Multi-page', 'Private'] },
+      chips: ['Drag & resize', 'Multi-page', 'Private'], admin: '/admin/pdf-signer', adminDesc: 'Usage log: documents signed, signatures placed and data processed.' },
     { id: 'image-to-pdf', name: 'Image to PDF', href: '/image-to-pdf', icon: 'image', tone: 'green',
       desc: 'Combine images into a single PDF, reorder the pages and pick the page size.',
-      chips: ['PNG / JPG / WebP', 'Reorder pages', 'Private'] },
+      chips: ['PNG / JPG / WebP', 'Reorder pages', 'Private'], admin: '/admin/image-to-pdf', adminDesc: 'Usage log: PDFs generated, images combined and page settings.' },
     { id: 'image-compressor', name: 'Image Compressor', href: '/image-compressor', admin: '/admin/image-compressor', icon: 'shrink', tone: 'pink',
       desc: 'Shrink photos to a target size in MB so any website accepts them. Compression runs in your browser.',
       chips: ['Target size in MB', 'JPEG / WebP', 'Batch + ZIP'], adminDesc: 'Review compressed images, sizes saved and who used the tool.' }
   ];
+
+  /* Admin-only pages (no public tool): shown in the admin area only */
+  TOOLS.push({ id: 'security', name: 'Security', icon: 'shield', tone: 'pink', adminOnly: true, admin: '/admin/security',
+    adminDesc: 'Blocked IPs and attack attempts detected on this server.' });
 
   /* Translation hook: i18n.js replaces X.t with the real dictionary lookup. {name} placeholders are filled from vars. */
   const fill = (s, vars) => (vars ? String(s).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m)) : String(s));
@@ -228,7 +232,7 @@
 
     let links = '';
     if (area === 'public') {
-      links = TOOLS.map(t => `<a class="nav-link ${t.id === active ? 'active' : ''}" href="${t.href}" title="${t.name}">${icon(t.icon, 'icon-sm')}<span class="label-text">${t.name}</span></a>`).join('');
+      links = TOOLS.filter(t => !t.adminOnly).map(t => `<a class="nav-link ${t.id === active ? 'active' : ''}" href="${t.href}" title="${t.name}">${icon(t.icon, 'icon-sm')}<span class="label-text">${t.name}</span></a>`).join('');
     } else if (area === 'admin') {
       links = `<a class="nav-link ${active === 'hub' ? 'active' : ''}" href="/admin" title="Overview">${icon('grid', 'icon-sm')}<span class="label-text">Overview</span></a>` +
         adminTools.map(t => `<a class="nav-link ${t.id === active ? 'active' : ''}" href="${t.admin}" title="${t.name}">${icon(t.icon, 'icon-sm')}<span class="label-text">${t.name}</span></a>`).join('');

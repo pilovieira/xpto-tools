@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Security Admin — XPTO Tools</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/xpto.css">
+  <script src="/public/xpto.js"></script>
+</head>
+<body data-area="admin" data-active="security">
+  <main class="container wide">
+    <div data-page-head data-tool="security"></div>
+    <div id="stats"></div>
+    <div id="notice"></div>
+
+    <section class="card flush">
+      <div class="tabs">
+        <button class="tab active" data-tab="blocks">Blocked IPs</button>
+        <button class="tab" data-tab="incidents">Incidents</button>
+        <span class="spacer"></span>
+        <button class="btn btn-sm" id="testBtn"></button>
+        <button class="btn btn-icon btn-sm btn-ghost" id="refresh" title="Refresh" aria-label="Refresh" style="align-self:center"></button>
+      </div>
+      <div class="toolbar" id="blockBar">
+        <input class="input" id="blockIp" placeholder="Block an IP manually (e.g. 203.0.113.9)" autocomplete="off" spellcheck="false">
+        <select class="select" id="blockHours" style="width:auto">
+          <option value="24">24 hours</option>
+          <option value="168">7 days</option>
+          <option value="8760">1 year</option>
+        </select>
+        <button class="btn btn-danger" id="blockBtn"></button>
+      </div>
+      <div id="content"><div class="loader"></div></div>
+    </section>
+  </main>
+
+  <script>
+    let data = { incidents: [], blocks: [] };
+    let tab = 'blocks';
+    const content = X.$('#content');
+    X.$('#refresh').innerHTML = X.icon('refresh', 'icon-sm');
+    X.$('#testBtn').innerHTML = `${X.icon('shield', 'icon-sm')} Send test alert`;
+    X.$('#blockBtn').innerHTML = `${X.icon('shield', 'icon-sm')} Block`;
+
+    const TYPE = {
+      scan: ['badge-warn', 'scan'],
+      'login-bruteforce': ['badge-danger', 'brute force'],
+      'admin-login': ['badge-info', 'admin login']
+    };
+    const typeBadge = t => { const [cls, label] = TYPE[t] || ['badge-accent', t]; return `<span class="badge ${cls}">${X.esc(label)}</span>`; };
+    const until = ms => X.fmtDate(new Date(ms).toISOString());
+    const field = (label, value) => `<div><div class="kv-label">${label}</div><div class="kv-value">${X.esc(value || '—')}</div></div>`;
+
+    function render() {
+      X.$('#blockBar').classList.toggle('hidden', tab !== 'blocks');
+      if (tab === 'blocks') {
+        X.table(content, [
+          { label: 'IP', html: b => X.ipBadge(b.key.endsWith('/64') ? b.key : b.ip) },
+          { label: 'Reason', html: b => X.esc(b.reason) },
+          { label: 'Blocked at', html: b => X.timeCell(b.at) },
+          { label: 'Until', html: b => `<span class="cell-time">${X.esc(until(b.until))}</span>` },
+          { label: 'Requests dropped', th: 'num', cls: 'num', html: b => b.hits.toLocaleString() },
+          { label: '', cls: 'actions', html: b => `<button class="btn btn-sm" data-unblock="${X.esc(b.key)}">Unblock</button>` }
+        ], data.blocks, { empty: { icon: 'shield', title: 'No blocked IPs', text: 'Scanners and brute-force attempts are blocked automatically and listed here.' } });
+      } else {
+        X.table(content, [
+          { label: 'Time', html: i => X.timeCell(i.timestamp) },
+          { label: 'Type', html: i => typeBadge(i.type) },
+          { label: 'IP', html: i => X.ipBadge(i.ip) },
+          { label: 'Country', html: i => X.esc(i.country || '—') },
+          { label: 'Paths tried', html: i => X.truncCell((i.samples || []).join('  '), true) },
+          { label: 'Alert', html: i => i.notified ? '<span class="badge badge-ok">sent</span>' : '<span class="badge badge-warn">not sent</span>' },
+          { label: 'User agent', html: i => X.uaCell(i.userAgent) }
+        ], data.incidents, { empty: { icon: 'list', title: 'No incidents yet', text: 'Nothing suspicious has been detected.' }, onRowClick: i => X.modal({
+          title: 'Incident', body: field('Time', X.fmtDate(i.timestamp)) + field('Type', i.type) + field('IP', i.ip) + field('Country', i.country) +
+            field('Score', String(i.points || 0)) + field('Paths tried', (i.samples || []).join('\n')) +
+            field('Blocked until', i.blockedUntil ? X.fmtDate(i.blockedUntil) : '—') + field('User agent', i.userAgent)
+        }) });
+      }
+    }
+
+    content.addEventListener('click', async e => {
+      const btn = e.target.closest('[data-unblock]');
+      if (!btn) return;
+      try {
+        await X.api('/admin/security/unblock', { method: 'POST', body: { key: btn.dataset.unblock } });
+        X.toast('IP unblocked');
+        load();
+      } catch (err) { X.toast(err.message, 'error'); }
+    });
+
+    X.$('#blockBtn').addEventListener('click', async () => {
+      const ip = X.$('#blockIp').value.trim();
+      if (!ip) return;
+      try {
+        await X.api('/admin/security/block', { method: 'POST', body: { ip, hours: +X.$('#blockHours').value } });
+        X.$('#blockIp').value = '';
+        X.toast('IP blocked');
+        load();
+      } catch (err) { X.toast(err.message, 'error'); }
+    });
+
+    X.$('#testBtn').addEventListener('click', async () => {
+      try {
+        await X.api('/admin/security/test', { method: 'POST' });
+        X.toast('Test alert sent — check your phone');
+      } catch (err) { X.toast(err.message, 'error'); }
+    });
+
+    X.$$('.tab').forEach(t => t.addEventListener('click', () => {
+      X.$$('.tab').forEach(x => x.classList.toggle('active', x === t));
+      tab = t.dataset.tab;
+      render();
+    }));
+
+    async function load() {
+      await X.withBusy(X.$('#refresh'), async () => {
+        try {
+          data = await X.api('/admin/security/data');
+          const scans = data.incidents.filter(i => i.type === 'scan').length;
+          X.stats(X.$('#stats'), [
+            { label: 'Blocked now', value: data.blocks.length.toLocaleString(), tone: 'pink' },
+            { label: 'Scans detected (recent)', value: scans.toLocaleString(), tone: 'amber' },
+            { label: 'Requests dropped (since restart)', value: data.blockedHits.toLocaleString(), tone: 'violet' },
+            { label: 'Phone alerts', value: data.topic ? 'On' : 'Off', tone: data.topic ? 'teal' : 'sky' }
+          ]);
+          X.$('#notice').innerHTML = data.topic ? '' : '<div class="alert" style="margin-bottom:16px">Phone alerts are off: set <code>SECURITY_NTFY_TOPIC</code> in the server .env. Blocking still works.</div>';
+          render();
+        } catch (err) {
+          content.innerHTML = '';
+          X.toast(err.message, 'error');
+        }
+      });
+    }
+
+    X.$('#refresh').addEventListener('click', load);
+    load();
+  </script>
+</body>
+</html>
