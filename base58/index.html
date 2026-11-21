@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/public/xpto.css">
   <script src="/public/xpto.js"></script>
+  <script src="/public/i18n.js"></script>
 </head>
 <body data-area="public" data-active="base58">
   <main class="container">
@@ -81,7 +82,7 @@
       const bytes = [0];
       for (let i = 0; i < string.length; i++) {
         const c = string.charAt(i);
-        if (!(c in ALPHABET_MAP)) throw new Error('Non-Base58 character: ' + c);
+        if (!(c in ALPHABET_MAP)) throw new Error(X.t('Non-Base58 character: {c}', { c }));
         for (let j = 0; j < bytes.length; j++) bytes[j] *= 58;
         bytes[0] += ALPHABET_MAP[c];
         let carry = 0;
@@ -120,7 +121,7 @@
         setOutput(X.$('#encodeOut'), encoded);
         X.track('/base58/log', { type: 'encode', input, output: encoded });
       } catch (err) {
-        X.toast('Encoding failed: ' + err.message, 'error');
+        X.toast(X.t('Encoding failed: {msg}', { msg: err.message }), 'error');
       }
     });
 
@@ -133,7 +134,7 @@
         X.track('/base58/log', { type: 'decode', input, output: decoded });
       } catch (err) {
         setOutput(X.$('#decodeOut'), '');
-        X.toast('Invalid Base58 string: ' + err.message, 'error');
+        X.toast(X.t('Invalid Base58 string: {msg}', { msg: err.message }), 'error');
       }
     });
   </script>

@@ -36,10 +36,11 @@ app.get('/healthz', async (req, res) => {
   }
 });
 
-// The PDF upload parses its own (raw, 50 MB) body; everything else is small JSON/forms
+// The PDF and image uploads parse their own (raw) bodies; everything else is small JSON/forms
+const RAW_UPLOADS = new Set(['/pdf-splitter/upload', '/image-compressor/upload']);
 const jsonBody = express.json({ limit: '100kb' });
 const formBody = express.urlencoded({ extended: false, limit: '100kb' });
-app.use((req, res, next) => (req.path === '/pdf-splitter/upload' ? next() : jsonBody(req, res, () => formBody(req, res, next))));
+app.use((req, res, next) => (RAW_UPLOADS.has(req.path) ? next() : jsonBody(req, res, () => formBody(req, res, next))));
 
 // Tool modules – each one owns its public pages, API and admin dashboard
 app.use(require('./admin').router);
@@ -50,6 +51,7 @@ app.use(require('./json-formatter').router);
 app.use(require('./pdf-splitter').router);
 app.use(require('./pdf-signer').router);
 app.use(require('./image-to-pdf').router);
+app.use(require('./image-compressor').router);
 
 // Home page, then short links
 const { redirectToUrl } = require('./shortener');

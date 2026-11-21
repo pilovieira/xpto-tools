@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Image Compressor Admin — XPTO Tools</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/xpto.css">
+  <script src="/public/xpto.js"></script>
+  <style>
+    .thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-2); background: var(--surface-3); display: block; }
+    .gallery { display: grid; gap: 14px; padding: 18px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+    .tile { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+    .tile img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--surface-3); display: block; }
+    .tile-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+    .tile-actions { display: flex; gap: 6px; }
+  </style>
+</head>
+<body data-area="admin" data-active="image-compressor">
+  <main class="container wide">
+    <div data-page-head data-tool="image-compressor"></div>
+    <div id="stats"></div>
+
+    <section class="card flush">
+      <div class="tabs">
+        <button class="tab active" data-tab="gallery">Stored images</button>
+        <button class="tab" data-tab="logs">Usage history</button>
+        <span class="spacer"></span>
+        <button class="btn btn-icon btn-sm btn-ghost" id="refresh" title="Refresh" aria-label="Refresh" style="align-self:center"></button>
+      </div>
+      <div id="content"><div class="loader"></div></div>
+    </section>
+  </main>
+
+  <script>
+    let data = { files: [], logs: [], totals: {} };
+    let tab = 'gallery';
+    const content = X.$('#content');
+    X.$('#refresh').innerHTML = X.icon('refresh', 'icon-sm');
+
+    const url = (name, inline) => `/admin/image-compressor/files/${encodeURIComponent(name)}${inline ? '?inline=1' : ''}`;
+    const byName = new Map();
+    const pct = l => l.origSize ? Math.round((1 - l.outSize / l.origSize) * 100) : 0;
+    const settings = l => l.mode === 'quality'
+      ? `quality ${l.quality}% · ${l.format}${l.maxDim ? ` · max ${l.maxDim}px` : ''}`
+      : `≤ ${l.targetMb} MB · ${l.format}${l.maxDim ? ` · max ${l.maxDim}px` : ''}`;
+
+    function render() {
+      byName.clear();
+      data.logs.forEach(l => byName.set(l.savedFilename, l));
+      if (tab === 'gallery') {
+        if (!data.files.length) {
+          X.table(content, [], [], { empty: { icon: 'folder', title: 'No images on disk', text: 'Images processed by the compressor will appear here.' } });
+          return;
+        }
+        content.innerHTML = `<div class="gallery">${data.files.map(f => {
+          const l = byName.get(f.filename);
+          return `<div class="tile">
+            <a href="${url(f.filename, true)}" target="_blank" rel="noopener"><img loading="lazy" src="${url(f.filename, true)}" alt=""></a>
+            <div class="tile-body">
+              <div class="cell-trunc" style="max-width:100%" title="${X.esc(l ? l.filename : f.filename)}">${X.esc(l ? l.filename : f.filename)}</div>
+              <div class="muted">${X.esc(X.fmtBytes(f.size))}${l ? ` → ${X.esc(X.fmtBytes(l.outSize))} <span class="badge badge-ok">−${pct(l)}%</span>` : ''}</div>
+              <div class="muted">${X.esc(X.fmtDate(f.birthtime))}${l ? ` · ${X.ipBadge(l.ip)}` : ''}</div>
+              <div class="tile-actions">
+                <a class="btn btn-sm" href="${url(f.filename)}">${X.icon('download', 'icon-sm')} Download</a>
+                <button class="btn btn-sm btn-danger btn-icon" data-delete="${X.esc(f.filename)}" title="Delete" aria-label="Delete">${X.icon('trash', 'icon-sm')}</button>
+              </div>
+            </div></div>`;
+        }).join('')}</div>`;
+      } else {
+        X.table(content, [
+          { label: '', html: l => `<img class="thumb" loading="lazy" src="${url(l.savedFilename, true)}" alt="" onerror="this.style.visibility='hidden'">` },
+          { label: 'Time', html: l => X.timeCell(l.timestamp) },
+          { label: 'Original name', html: l => X.truncCell(l.filename) },
+          { label: 'Before', th: 'num', cls: 'num', html: l => `${X.esc(X.fmtBytes(l.origSize))}<div class="muted" style="font-size:12px">${l.origWidth}×${l.origHeight}</div>` },
+          { label: 'After', th: 'num', cls: 'num', html: l => `${X.esc(X.fmtBytes(l.outSize))}<div class="muted" style="font-size:12px">${l.width}×${l.height}</div>` },
+          { label: 'Saved', th: 'num', cls: 'num', html: l => l.kept ? '<span class="badge badge-info">kept</span>' : `<span class="badge badge-ok">−${pct(l)}%</span>` },
+          { label: 'Settings', html: l => X.truncCell(settings(l)) },
+          { label: 'Client IP', html: l => X.ipBadge(l.ip) },
+          { label: 'User agent', html: l => X.uaCell(l.userAgent) }
+        ], data.logs, { empty: { icon: 'list', title: 'No usage logs', text: 'No image compressions have been logged yet.' } });
+      }
+    }
+
+    content.addEventListener('click', async e => {
+      const btn = e.target.closest('[data-delete]');
+      if (!btn) return;
+      const ok = await X.confirm('This deletes the image from disk and clears its log entry.', { title: 'Delete this image?', confirmText: 'Delete' });
+      if (!ok) return;
+      try {
+        await X.api(url(btn.dataset.delete), { method: 'DELETE' });
+        X.toast('File deleted');
+        load();
+      } catch (err) {
+        X.toast(err.message, 'error');
+      }
+    });
+
+    X.$$('.tab').forEach(t => t.addEventListener('click', () => {
+      X.$$('.tab').forEach(x => x.classList.toggle('active', x === t));
+      tab = t.dataset.tab;
+      render();
+    }));
+
+    async function load() {
+      await X.withBusy(X.$('#refresh'), async () => {
+        try {
+          data = await X.api('/admin/image-compressor/data');
+          const t = data.totals;
+          X.stats(X.$('#stats'), [
+            { label: 'Images processed', value: t.count.toLocaleString(), tone: 'violet' },
+            { label: 'Original total', value: X.fmtBytes(t.bytesIn), tone: 'pink' },
+            { label: 'After compression', value: X.fmtBytes(t.bytesOut), tone: 'teal' },
+            { label: 'Saved', value: t.bytesIn ? `${Math.round((1 - t.bytesOut / t.bytesIn) * 100)}%` : '—', tone: 'sky' },
+            { label: 'Size on disk', value: X.fmtBytes(data.files.reduce((s, f) => s + f.size, 0)), tone: 'amber' },
+            { label: 'Unique IPs (recent)', value: new Set(data.logs.map(l => l.ip)).size.toLocaleString(), tone: 'sky' }
+          ]);
+          render();
+        } catch (err) {
+          content.innerHTML = '';
+          X.toast(err.message, 'error');
+        }
+      });
+    }
+
+    X.$('#refresh').addEventListener('click', load);
+    load();
+  </script>
+</body>
+</html>

@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/public/xpto.css">
   <script src="/public/xpto.js"></script>
+  <script src="/public/i18n.js"></script>
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
@@ -126,12 +127,12 @@
           </div>`).join('');
 
         X.$('#fileName').textContent = file.name;
-        X.$('#fileMeta').textContent = `${count} page${count > 1 ? 's' : ''} · ${X.fmtBytes(file.size)}`;
+        X.$('#fileMeta').textContent = `${X.t(count > 1 ? '{n} pages' : '{n} page', { n: count })} · ${X.fmtBytes(file.size)}`;
         X.$('#info').classList.remove('hidden');
         X.toast('PDF split successfully');
       } catch (e) {
         console.error(e);
-        X.toast('Could not process PDF: ' + e.message, 'error');
+        X.toast(X.t('Could not process PDF: {msg}', { msg: e.message }), 'error');
       } finally {
         setStatus('');
         fileInput.value = '';
@@ -161,7 +162,7 @@
         save(await zip.generateAsync({ type: 'blob' }), `${baseName()}_split_pages.zip`);
         X.toast('ZIP download started');
       } catch (err) {
-        X.toast('Failed to build ZIP: ' + err.message, 'error');
+        X.toast(X.t('Failed to build ZIP: {msg}', { msg: err.message }), 'error');
       }
     });
   </script>

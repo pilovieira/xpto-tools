@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/public/xpto.css">
   <script src="/public/xpto.js"></script>
+  <script src="/public/i18n.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
@@ -202,7 +203,7 @@
         refreshBadges();
         checkDownloadReady();
         await renderPage(currentPage);
-        X.toast(`Loaded “${file.name}” — ${totalPages} page${totalPages > 1 ? 's' : ''}`);
+        X.toast(X.t(totalPages > 1 ? 'Loaded “{name}” — {n} pages' : 'Loaded “{name}” — {n} page', { name: file.name, n: totalPages }));
       } catch (err) {
         console.error(err);
         X.toast('Could not open that PDF.', 'error');
@@ -253,7 +254,7 @@
 
     function refreshBadges() {
       pagesList.innerHTML = placements.map(pl => `
-        <div class="placed-item"><span>Page ${pl.page}</span>
+        <div class="placed-item"><span>${X.esc(X.t('Page {n}', { n: pl.page }))}</span>
           <button class="btn btn-ghost btn-icon btn-sm" data-remove="${pl.page}" title="Remove">${X.icon('x', 'icon-sm')}</button></div>`).join('');
       X.$('#placed-hint').style.display = placements.length ? 'none' : 'block';
     }
@@ -369,7 +370,7 @@
         X.toast('Signed PDF downloaded');
       } catch (err) {
         console.error(err);
-        X.toast('Error: ' + err.message, 'error');
+        X.toast(X.t('Error: {msg}', { msg: err.message }), 'error');
       } finally {
         btnDownload.innerHTML = DOWNLOAD_LABEL;
         btnDownload.disabled = false;

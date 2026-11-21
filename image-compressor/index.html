@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Image Compressor — XPTO Tools</title>
+  <meta name="description" content="Shrink photos to a target size in MB so any website accepts them.">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/xpto.css">
+  <script src="/public/xpto.js"></script>
+  <script src="/public/i18n.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    .opts { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); align-items: start; }
+    .presets { display: flex; gap: 6px; flex-wrap: wrap; }
+    .preset { cursor: pointer; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); font: inherit; font-size: 12.5px; padding: 4px 10px; border-radius: 99px; }
+    .preset:hover, .preset.active { border-color: var(--accent); color: var(--accent); }
+    .res-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .res-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; }
+    .res-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-2); background: var(--surface-3); flex: none; }
+    .res-meta { flex: 1; min-width: 0; }
+    .res-name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .res-sub { color: var(--muted); font-size: 12.5px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 2px; }
+    .res-sub b { color: var(--text); font-weight: 600; }
+    .res-actions { display: flex; gap: 4px; align-items: center; }
+    .total { font-weight: 600; }
+  </style>
+</head>
+<body data-area="public" data-active="image-compressor">
+  <main class="container narrow">
+    <div data-page-head data-tool="image-compressor"></div>
+
+    <section class="card stack">
+      <label class="dropzone" id="dropZone">
+        <svg class="icon" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></svg>
+        <strong>Drop images here, or click to browse</strong>
+        <span>PNG, JPG or WebP · multiple files allowed</span>
+        <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" multiple>
+      </label>
+      <div class="alert alert-info row" style="gap:10px; flex-wrap:nowrap">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span>Images are compressed in your browser. A copy of each original is also kept on the server for a few weeks for administrative review.</span>
+      </div>
+
+      <div id="work" class="stack hidden">
+        <div class="card-title">Settings</div>
+        <div class="opts">
+          <div class="field">
+            <label>Mode</label>
+            <div class="seg" id="modeSeg">
+              <button class="seg-btn active" data-mode="target">Target size</button>
+              <button class="seg-btn" data-mode="quality">Quality</button>
+            </div>
+          </div>
+
+          <div class="field" id="targetField">
+            <label for="targetMb">Maximum size (MB)</label>
+            <input class="input" id="targetMb" type="number" min="0.05" max="50" step="0.1" value="1" inputmode="decimal">
+            <div class="presets" id="presets">
+              <button class="preset" type="button" data-mb="0.5">0.5 MB</button>
+              <button class="preset active" type="button" data-mb="1">1 MB</button>
+              <button class="preset" type="button" data-mb="2">2 MB</button>
+              <button class="preset" type="button" data-mb="5">5 MB</button>
+            </div>
+          </div>
+
+          <div class="field hidden" id="qualityField">
+            <label for="quality">Quality</label>
+            <div class="range-row"><input type="range" id="quality" min="10" max="100" value="80"><span class="range-val" id="qualityVal">80%</span></div>
+          </div>
+
+          <div class="field">
+            <label for="maxDim">Maximum dimension</label>
+            <select class="select" id="maxDim">
+              <option value="0">Original size</option>
+              <option value="4096">4096 px</option>
+              <option value="3000">3000 px</option>
+              <option value="2048">2048 px</option>
+              <option value="1600">1600 px</option>
+              <option value="1280">1280 px</option>
+              <option value="1024">1024 px</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="format">Output format</label>
+            <select class="select" id="format">
+              <option value="jpeg">JPEG (most compatible)</option>
+              <option value="webp">WebP (smaller)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row between">
+          <div class="card-title">Images</div>
+          <span class="badge badge-accent" id="count">0 images</span>
+        </div>
+        <ul class="res-list" id="list"></ul>
+        <div class="total hidden" id="total"></div>
+
+        <div class="row">
+          <button class="btn btn-primary btn-lg" id="runBtn"></button>
+          <button class="btn" id="zipBtn"></button>
+          <button class="btn" id="addMoreBtn"></button>
+          <span class="spacer"></span>
+          <button class="btn btn-danger" id="clearBtn"></button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const MAX_INPUT = 80 * 1024 * 1024;      // refuse absurd inputs
+    const MAX_UPLOAD = 40 * 1024 * 1024;     // server-side copy limit
+    const MAX_FILES = 40;
+    const ACCEPTED = ['image/png', 'image/jpeg', 'image/webp'];
+
+    let items = [];          // { id, file, url, status, blob, outName, w, h, ow, oh, kept, missed, uploaded }
+    let seq = 0;
+    let running = false;
+    const state = { mode: 'target', targetMb: 1, quality: 80, maxDim: 0, format: 'jpeg' };
+
+    const fileInput = X.$('#fileInput');
+    const dropZone = X.$('#dropZone');
+    const list = X.$('#list');
+    const runBtn = X.$('#runBtn');
+
+    runBtn.innerHTML = `${X.icon('refresh', 'icon-sm')} Compress`;
+    X.$('#zipBtn').innerHTML = `${X.icon('archive', 'icon-sm')} Download all as ZIP`;
+    X.$('#addMoreBtn').innerHTML = `${X.icon('plus', 'icon-sm')} Add more`;
+    X.$('#clearBtn').innerHTML = `${X.icon('trash', 'icon-sm')} Clear all`;
+
+    /* ── Settings ── */
+    X.$$('#modeSeg .seg-btn').forEach(btn => btn.addEventListener('click', () => {
+      state.mode = btn.dataset.mode;
+      X.$$('#modeSeg .seg-btn').forEach(b => b.classList.toggle('active', b === btn));
+      X.$('#targetField').classList.toggle('hidden', state.mode !== 'target');
+      X.$('#qualityField').classList.toggle('hidden', state.mode !== 'quality');
+    }));
+    const setTarget = v => {
+      state.targetMb = Math.min(Math.max(Number(v) || 1, 0.05), 50);
+      X.$$('.preset').forEach(p => p.classList.toggle('active', Number(p.dataset.mb) === state.targetMb));
+    };
+    X.$('#targetMb').addEventListener('input', e => setTarget(e.target.value));
+    X.$('#presets').addEventListener('click', e => {
+      const p = e.target.closest('.preset');
+      if (!p) return;
+      X.$('#targetMb').value = p.dataset.mb;
+      setTarget(p.dataset.mb);
+    });
+    X.$('#quality').addEventListener('input', e => { state.quality = +e.target.value; X.$('#qualityVal').textContent = `${state.quality}%`; });
+    X.$('#maxDim').addEventListener('change', e => { state.maxDim = +e.target.value; });
+    X.$('#format').addEventListener('change', e => { state.format = e.target.value; });
+
+    /* ── Adding files ── */
+    fileInput.addEventListener('change', e => { addFiles(e.target.files); fileInput.value = ''; });
+    X.$('#addMoreBtn').addEventListener('click', () => fileInput.click());
+    ['dragenter', 'dragover'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('dragover'); }));
+    ['dragleave', 'drop'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.remove('dragover'); }));
+    dropZone.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+
+    function addFiles(fileList) {
+      const all = [...fileList];
+      let valid = all.filter(f => ACCEPTED.includes(f.type));
+      if (!valid.length) return X.toast('No valid image files found.', 'error');
+      if (valid.some(f => f.size > MAX_INPUT)) { X.toast('Some images are larger than 80 MB and were skipped.', 'error'); valid = valid.filter(f => f.size <= MAX_INPUT); }
+      if (items.length + valid.length > MAX_FILES) { X.toast(X.t('Up to {n} images at a time.', { n: MAX_FILES }), 'error'); valid = valid.slice(0, Math.max(MAX_FILES - items.length, 0)); }
+      const fresh = valid.map(file => ({ id: ++seq, file, url: URL.createObjectURL(file), status: 'wait' }));
+      items.push(...fresh);
+      render();
+      if (fresh.length) run(fresh);
+    }
+
+    X.$('#clearBtn').addEventListener('click', () => {
+      items.forEach(i => URL.revokeObjectURL(i.url));
+      items = [];
+      render();
+    });
+
+    /* ── Compression ── */
+    async function decode(file) {
+      try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch { /* fall back below */ }
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('decode'));
+        img.src = URL.createObjectURL(file);
+      });
+    }
+    const dims = src => [src.naturalWidth || src.width, src.naturalHeight || src.height];
+
+    function draw(src, w, h) {
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';               // JPEG has no alpha: flatten transparency onto white
+      ctx.fillRect(0, 0, w, h);
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(src, 0, 0, w, h);
+      return canvas;
+    }
+    const encode = (canvas, type, q) => new Promise(resolve => canvas.toBlob(resolve, type, q));
+
+    async function compress(item) {
+      const bmp = await decode(item.file);
+      const [ow, oh] = dims(bmp);
+      let type = state.format === 'webp' ? 'image/webp' : 'image/jpeg';
+      let scale = state.maxDim ? Math.min(1, state.maxDim / Math.max(ow, oh)) : 1;
+      const targetBytes = state.targetMb * 1024 * 1024 * 0.98;
+      item.ow = ow; item.oh = oh; item.missed = false; item.kept = false;
+
+      // Already small enough and nothing to resize: hand the original back untouched
+      if (state.mode === 'target' && item.file.size <= targetBytes && scale === 1) {
+        Object.assign(item, { blob: item.file, outName: item.file.name, w: ow, h: oh, kept: true, usedQuality: 100 });
+        return;
+      }
+
+      let blob, w, h, canvas, usedQuality = state.quality;
+      for (let attempt = 0; attempt < 9; attempt++) {
+        w = Math.max(Math.round(ow * scale), 1); h = Math.max(Math.round(oh * scale), 1);
+        canvas = draw(bmp, w, h);
+        if (state.mode === 'quality') { blob = await encode(canvas, type, state.quality / 100); break; }
+
+        let lo = 0.3, hi = 0.95, best = null;
+        const first = await encode(canvas, type, hi);
+        if (first && first.size <= targetBytes) { best = first; usedQuality = 95; }
+        else {
+          for (let i = 0; i < 6; i++) {
+            const q = (lo + hi) / 2;
+            const b = await encode(canvas, type, q);
+            if (b && b.size <= targetBytes) { best = b; usedQuality = Math.round(q * 100); lo = q; } else hi = q;
+          }
+        }
+        if (best) { blob = best; break; }
+        const floor = await encode(canvas, type, 0.3);  // still too big: shrink the pixels and retry
+        blob = floor; usedQuality = 30;
+        scale *= Math.min(Math.max(Math.sqrt(targetBytes / floor.size) * 0.95, 0.5), 0.9);
+        if (attempt === 8) item.missed = true;
+      }
+      if (bmp.close) bmp.close();
+      if (!blob) throw new Error('encode');
+      if (blob.type !== type) type = blob.type;   // browser without WebP encoding falls back to PNG/JPEG
+
+      // Re-encoding made it bigger and nothing was resized: keep the original
+      if (blob.size >= item.file.size && w === ow && h === oh && !item.missed) {
+        Object.assign(item, { blob: item.file, outName: item.file.name, w: ow, h: oh, kept: true, usedQuality: 100 });
+        return;
+      }
+      const ext = type === 'image/webp' ? 'webp' : type === 'image/png' ? 'png' : 'jpg';
+      const base = item.file.name.replace(/\.[^.]+$/, '') || 'image';
+      Object.assign(item, { blob, outName: `${base}-compressed.${ext}`, w, h, usedQuality });
+    }
+
+    /** Keep a copy of the original (plus what happened to it) on the server; never blocks the user */
+    async function uploadCopy(item) {
+      if (item.uploaded || item.file.size > MAX_UPLOAD) return;
+      item.uploaded = true;
+      try {
+        await fetch('/image-compressor/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': item.file.type,
+            'X-Filename': encodeURIComponent(item.file.name),
+            'X-Meta': encodeURIComponent(JSON.stringify({
+              outSize: item.blob.size, origWidth: item.ow, origHeight: item.oh, width: item.w, height: item.h,
+              format: state.format, mode: state.mode, quality: item.usedQuality, targetMb: state.targetMb, maxDim: state.maxDim, kept: item.kept
+            }))
+          },
+          body: item.file
+        });
+      } catch { /* the copy is best effort */ }
+    }
+
+    async function run(targets = items) {
+      if (running || !targets.length) return;
+      running = true;
+      runBtn.disabled = true;
+      for (const item of targets) {
+        if (!items.includes(item)) continue;
+        item.status = 'busy';
+        render();
+        try {
+          await compress(item);
+          item.status = 'done';
+          uploadCopy(item);
+        } catch {
+          item.status = 'error';
+        }
+        render();
+        await new Promise(r => setTimeout(r, 0));
+      }
+      running = false;
+      runBtn.disabled = false;
+      render();
+    }
+    runBtn.addEventListener('click', () => {
+      items.forEach(i => { if (i.status !== 'busy') i.status = 'wait'; });
+      run();
+    });
+
+    /* ── Rendering ── */
+    function sub(i) {
+      if (i.status === 'wait') return `<span>${X.esc(X.t('Waiting…'))}</span>`;
+      if (i.status === 'busy') return `<span>${X.esc(X.t('Compressing…'))}</span>`;
+      if (i.status === 'error') return `<span class="badge badge-danger">${X.esc(X.t('Could not read this image.'))}</span>`;
+      const saved = Math.round((1 - i.blob.size / i.file.size) * 100);
+      const parts = [`<b>${X.esc(X.fmtBytes(i.file.size))}</b> → <b>${X.esc(X.fmtBytes(i.blob.size))}</b>`];
+      if (i.kept) parts.push(`<span class="badge badge-info">${X.esc(X.t('Already small enough'))}</span>`);
+      else if (i.missed) parts.push(`<span class="badge badge-warn">${X.esc(X.t('Could not reach the target size'))}</span>`);
+      else parts.push(`<span class="badge badge-ok">−${saved}%</span>`);
+      if (!i.kept) parts.push(`<span>${i.ow}×${i.oh} → ${i.w}×${i.h}</span>`);
+      return parts.join('');
+    }
+
+    function render() {
+      X.$('#work').classList.toggle('hidden', items.length === 0);
+      X.$('#count').textContent = X.t(items.length === 1 ? '{n} image' : '{n} images', { n: items.length });
+      list.innerHTML = items.map(i => `
+        <li class="res-item" data-id="${i.id}">
+          <img class="res-thumb" src="${i.url}" alt="">
+          <div class="res-meta">
+            <div class="res-name" title="${X.esc(i.file.name)}">${X.esc(i.file.name)}</div>
+            <div class="res-sub">${sub(i)}</div>
+          </div>
+          <div class="res-actions">
+            ${i.status === 'done' ? `<button class="btn btn-sm" data-act="download">${X.icon('download', 'icon-sm')} ${X.esc(X.t('Download'))}</button>` : ''}
+            <button class="btn btn-danger btn-icon btn-sm" data-act="remove" title="${X.esc(X.t('Remove'))}">${X.icon('x', 'icon-sm')}</button>
+          </div>
+        </li>`).join('');
+
+      const done = items.filter(i => i.status === 'done');
+      const total = X.$('#total');
+      total.classList.toggle('hidden', !done.length);
+      if (done.length) {
+        const before = done.reduce((s, i) => s + i.file.size, 0), after = done.reduce((s, i) => s + i.blob.size, 0);
+        total.textContent = X.t('Total: {from} → {to} (saved {saved})', { from: X.fmtBytes(before), to: X.fmtBytes(after), saved: X.fmtBytes(Math.max(before - after, 0)) });
+      }
+      X.$('#zipBtn').classList.toggle('hidden', done.length < 2);
+    }
+
+    const save = (blob, name) => {
+      const url = URL.createObjectURL(blob);
+      const a = Object.assign(document.createElement('a'), { href: url, download: name });
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+
+    list.addEventListener('click', e => {
+      const btn = e.target.closest('[data-act]');
+      if (!btn) return;
+      const i = items.find(x => x.id === +btn.closest('.res-item').dataset.id);
+      if (!i) return;
+      if (btn.dataset.act === 'download') save(i.blob, i.outName);
+      else { URL.revokeObjectURL(i.url); items = items.filter(x => x !== i); render(); }
+    });
+
+    X.$('#zipBtn').addEventListener('click', async () => {
+      try {
+        const zip = new JSZip();
+        const used = new Set();
+        items.filter(i => i.status === 'done').forEach(i => {
+          let name = i.outName, n = 1;
+          while (used.has(name)) name = i.outName.replace(/(\.[^.]+)$/, `-${++n}$1`);
+          used.add(name);
+          zip.file(name, i.blob);
+        });
+        save(await zip.generateAsync({ type: 'blob' }), 'compressed-images.zip');
+        X.toast('ZIP download started');
+      } catch (err) {
+        X.toast(X.t('Failed to build ZIP: {msg}', { msg: err.message }), 'error');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -45,6 +45,8 @@
     external: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
     archive: '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
     braces: '<path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/>',
+    shrink: '<path d="m15 15 6 6"/><path d="m15 15v5m0-5h5"/><path d="m9 9-6-6"/><path d="M9 9V4m0 5H4"/><path d="m15 9 6-6"/><path d="M15 9V4m0 5h5"/><path d="m9 15-6 6"/><path d="M9 15v5m0-5H4"/>',
+    globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
     info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>'
   };
   const icon = (name, cls = '') =>
@@ -72,8 +74,15 @@
       chips: ['Drag & resize', 'Multi-page', 'Private'] },
     { id: 'image-to-pdf', name: 'Image to PDF', href: '/image-to-pdf', icon: 'image', tone: 'green',
       desc: 'Combine images into a single PDF, reorder the pages and pick the page size.',
-      chips: ['PNG / JPG / WebP', 'Reorder pages', 'Private'] }
+      chips: ['PNG / JPG / WebP', 'Reorder pages', 'Private'] },
+    { id: 'image-compressor', name: 'Image Compressor', href: '/image-compressor', admin: '/admin/image-compressor', icon: 'shrink', tone: 'pink',
+      desc: 'Shrink photos to a target size in MB so any website accepts them. Compression runs in your browser.',
+      chips: ['Target size in MB', 'JPEG / WebP', 'Batch + ZIP'], adminDesc: 'Review compressed images, sizes saved and who used the tool.' }
   ];
+
+  /* Translation hook: i18n.js replaces X.t with the real dictionary lookup. {name} placeholders are filled from vars. */
+  const fill = (s, vars) => (vars ? String(s).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m)) : String(s));
+  const tr = (key, vars) => window.X.t(key, vars);
 
   /* ── Helpers ──────────────────────────────────────────────────────── */
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -98,7 +107,7 @@
     if (!box) { box = document.createElement('div'); box.className = 'toasts'; box.setAttribute('role', 'status'); document.body.append(box); }
     const el = document.createElement('div');
     el.className = `toast ${type === 'error' ? 'error' : ''}`;
-    el.innerHTML = `${icon(type === 'error' ? 'alert' : 'check')}<span>${esc(message)}</span>`;
+    el.innerHTML = `${icon(type === 'error' ? 'alert' : 'check')}<span>${esc(tr(message))}</span>`;
     box.append(el);
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 220); }, ms);
   }
@@ -164,7 +173,7 @@
     }
     let data = null;
     try { data = await res.json(); } catch { /* no body */ }
-    if (!res.ok) throw Object.assign(new Error((data && data.fail) || `Request failed (${res.status})`), { status: res.status, data });
+    if (!res.ok) throw Object.assign(new Error(tr((data && data.fail) || `Request failed (${res.status})`)), { status: res.status, data });
     return data;
   }
 
@@ -219,10 +228,10 @@
 
     let links = '';
     if (area === 'public') {
-      links = TOOLS.map(t => `<a class="nav-link ${t.id === active ? 'active' : ''}" href="${t.href}">${icon(t.icon, 'icon-sm')}<span class="label-text">${t.name}</span></a>`).join('');
+      links = TOOLS.map(t => `<a class="nav-link ${t.id === active ? 'active' : ''}" href="${t.href}" title="${t.name}">${icon(t.icon, 'icon-sm')}<span class="label-text">${t.name}</span></a>`).join('');
     } else if (area === 'admin') {
-      links = `<a class="nav-link ${active === 'hub' ? 'active' : ''}" href="/admin">${icon('grid', 'icon-sm')}<span class="label-text">Overview</span></a>` +
-        adminTools.map(t => `<a class="nav-link ${t.id === active ? 'active' : ''}" href="${t.admin}">${icon(t.icon, 'icon-sm')}<span class="label-text">${t.name}</span></a>`).join('');
+      links = `<a class="nav-link ${active === 'hub' ? 'active' : ''}" href="/admin" title="Overview">${icon('grid', 'icon-sm')}<span class="label-text">Overview</span></a>` +
+        adminTools.map(t => `<a class="nav-link ${t.id === active ? 'active' : ''}" href="${t.admin}" title="${t.name}">${icon(t.icon, 'icon-sm')}<span class="label-text">${t.name}</span></a>`).join('');
     }
 
     const nav = document.createElement('header');
@@ -289,6 +298,6 @@
     buildFooter();
   });
 
-  window.X = { TOOLS, icon, esc, fmtDate, fmtBytes, safeHref, $, $$, toast, copy, modal, confirm: confirmDialog,
+  window.X = { t: fill, fill, TOOLS, icon, esc, fmtDate, fmtBytes, safeHref, $, $$, toast, copy, modal, confirm: confirmDialog,
     api, track, stats, table, ipBadge, uaCell, timeCell, truncCell, withBusy };
 })();

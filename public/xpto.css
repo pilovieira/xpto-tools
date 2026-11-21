@@ -441,3 +441,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 22px; cu
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* Many tools: when the nav is too narrow for every name, inactive links collapse to icons (names stay in the tooltip) */
+.nav-links { container-type: inline-size; }
+@container (max-width: 1150px) { .nav-link:not(.active) .label-text { display: none; } .nav-link:not(.active) { padding-inline: 10px; } }

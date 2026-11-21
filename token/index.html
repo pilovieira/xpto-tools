@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/public/xpto.css">
   <script src="/public/xpto.js"></script>
+  <script src="/public/i18n.js"></script>
   <style>
     .tokens { display: grid; gap: 8px; }
     .tokens.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -218,7 +219,7 @@
       state.tokens = Array.from({ length: state.quantity }, generateToken);
       const ms = (performance.now() - t0).toFixed(1);
       render();
-      X.$('#meta').textContent = `${state.quantity} ${state.type} token${state.quantity > 1 ? 's' : ''} in ${ms} ms · generated in your browser`;
+      X.$('#meta').textContent = X.t(state.quantity > 1 ? '{n} {type} tokens in {ms} ms · generated in your browser' : '{n} {type} token in {ms} ms · generated in your browser', { n: state.quantity, type: state.type, ms });
       X.track('/token/log', {
         type: state.type, length: state.type === 'uuid' ? 36 : state.length, quantity: state.quantity,
         prefix: state.prefix, separator: state.separator, groupSize: state.groupSize

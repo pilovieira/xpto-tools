@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/public/xpto.css">
   <script src="/public/xpto.js"></script>
+  <script src="/public/i18n.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     .img-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -119,7 +120,7 @@
     /* ── List ── */
     function render() {
       listSection.classList.toggle('hidden', images.length === 0);
-      X.$('#count').textContent = images.length === 1 ? '1 image' : `${images.length} images`;
+      X.$('#count').textContent = X.t(images.length === 1 ? '{n} image' : '{n} images', { n: images.length });
       list.innerHTML = images.map((img, i) => `
         <li class="img-item" draggable="true" data-i="${i}">
           <span class="grip" title="Drag to reorder">${X.icon('grip')}</span>
@@ -194,7 +195,7 @@
       try {
         let doc = null;
         for (let i = 0; i < images.length; i++) {
-          X.$('#progressLabel').textContent = `Processing image ${i + 1} of ${images.length}…`;
+          X.$('#progressLabel').textContent = X.t('Processing image {i} of {n}…', { i: i + 1, n: images.length });
           bar.style.width = `${(i / images.length) * 90}%`;
 
           const { data, w, h } = await loadImage(images[i].url);
@@ -218,7 +219,7 @@
         X.$('#progressLabel').textContent = 'Saving PDF…';
         await tick();
         doc.save(`images-${Date.now()}.pdf`);
-        X.toast(`PDF saved — ${images.length} page${images.length > 1 ? 's' : ''}`);
+        X.toast(X.t(images.length > 1 ? 'PDF saved — {n} pages' : 'PDF saved — {n} page', { n: images.length }));
       } catch (err) {
         console.error(err);
         X.toast(err.message || 'Something went wrong. Please try again.', 'error');

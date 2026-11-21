@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/public/xpto.css">
   <script src="/public/xpto.js"></script>
+  <script src="/public/i18n.js"></script>
   <style>
     .editor { min-height: 460px; resize: vertical; white-space: pre; overflow: auto; tab-size: 2; }
     .status { display: flex; align-items: center; gap: 8px; min-height: 24px; font-size: 13px; }
@@ -112,7 +113,7 @@
         output.value = '';
         track(mode, false, text, err.message);
         const { msg, line, col } = describeError(err, text);
-        setStatus(`${X.icon('alert', 'icon-sm')} Invalid JSON${line ? ` — line ${line}, column ${col}` : ''}`, 'danger');
+        setStatus(`${X.icon('alert', 'icon-sm')} ${X.esc(line ? X.t('Invalid JSON — line {line}, column {col}', { line, col }) : X.t('Invalid JSON'))}`, 'danger');
         status.insertAdjacentHTML('beforeend', `<span class="muted mono">${X.esc(msg)}</span>`);
         if (line) jumpTo(text, line, col);
       }

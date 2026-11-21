@@ -19,6 +19,7 @@ A collection of lightweight, high-performance developer utilities powered by Nod
 | ✂️ PDF Splitter | `/pdf-splitter` | One PDF per page + ZIP. A copy of the upload is kept server-side for admin review (auto-deleted after `PDF_RETENTION_DAYS`) |
 | ✍️ PDF Signer | `/pdf-signer` | Drag/resize a signature image onto any page, fully client-side |
 | 🖼️ Image to PDF | `/image-to-pdf` | Reorder images, choose page size/orientation, fully client-side |
+| 📉 Image Compressor | `/image-compressor` | Shrink photos to a target size in MB (or a quality %), JPEG/WebP, batch + ZIP. Compressed in the browser; a copy of each original and its result is kept server-side for admin review (`IMG_RETENTION_DAYS`, default 30) |
 
 Every tool with server-side activity has a dashboard under **`/admin`** (login required): logs, stats, and — for the shortener and PDF splitter — management actions.
 
@@ -34,6 +35,10 @@ util/                  db (Redis), auth (sessions + rate limit), http helpers, l
 admin/                 Login + hub
 public/xpto.css        Design system (tokens, light/dark theme, components)
 public/xpto.js         Shared UI runtime: navbar, tool registry, toasts, modals, table helpers
+public/i18n.js            Translations (en, pt, es, fr, de, it, ja, zh) + language picker. Pages are written in English and every
+                       visible string is looked up by its English text; strings with variables use X.t('Total: {from}', { from }).
+                       The admin area stays in English.
+data/                  Runtime storage (git-ignored), e.g. stored originals of the image compressor
 ```
 
 New tool checklist: add an entry to `TOOLS` in `public/xpto.js`, create `<tool>/index.js` exporting a `router`, and mount it in `app.js`.

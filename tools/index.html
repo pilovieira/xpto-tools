@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/public/xpto.css">
   <script src="/public/xpto.js"></script>
+  <script src="/public/i18n.js"></script>
 </head>
 <body data-area="public" data-active="home">
   <main class="container">
@@ -34,7 +35,7 @@
 
     function render(query = '') {
       const q = query.trim().toLowerCase();
-      const list = X.TOOLS.filter(t => !q || [t.name, t.desc, ...t.chips].join(' ').toLowerCase().includes(q));
+      const list = X.TOOLS.filter(t => !q || [t.name, t.desc, ...t.chips].flatMap(s => [s, X.t(s)]).join(' ').toLowerCase().includes(q));
       grid.innerHTML = list.map(t => `
         <a class="tool-card tone-${t.tone}" href="${t.href}">
           <div class="page-icon">${X.icon(t.icon)}</div>
