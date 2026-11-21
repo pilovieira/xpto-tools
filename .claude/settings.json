@@ -1,0 +1,1 @@
+{ "permissions": { "allow": ["Bash(ssh xpto-deploy)", "Bash(ssh xpto-deploy status)"] } }
