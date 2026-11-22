@@ -22,7 +22,7 @@ Tudo deu 404 (nada vazou), mas o dono quer ser avisado e que o IP seja barrado. 
 ## O que foi feito no XPTO Tools (referência, repositório `~/projects/xpto-tools`)
 - `util/security.js`: middleware **antes de tudo** (antes do log). Pontua cada requisição suspeita por IP numa janela de 60 s:
   caminho de alto sinal (`.env`, `.git`, `*.php`, `wp-*`, `phpinfo`, `cgi-bin`, `actuator`, traversal...) = 3 pontos; 404 comum = 1 ponto
-  (mesmo caminho repetido não soma; `favicon.ico`/`robots.txt` são ignorados). **10 pontos** => bloqueia o IP por 24 h (resposta 403 vazia, sem log).
+  (mesmo caminho repetido não soma; `favicon.ico`/`robots.txt` são ignorados). **10 pontos** => bloqueia o IP por 7 dias (168 h) (resposta 403 vazia, sem log).
   Login de admin: **5 falhas (401) em 10 min** => bloqueio de 1 h e alerta urgente. Login de admin de um **IP nunca visto** => alerta.
 - Nunca bloqueia: IP privado/loopback, `SECURITY_ALLOW_IPS`, nem quem está com sessão de admin válida.
 - Alerta no celular via **ntfy** (https://ntfy.sh): `POST https://ntfy.sh/<TOPIC>` com headers `Title` (só ASCII), `Priority` (3 scan, 4 login novo, 5 brute force),

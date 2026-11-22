@@ -1,7 +1,7 @@
 /* Intrusion guard: spots scanners / brute force by IP, blocks them for a while and pushes an alert to the owner's phone (ntfy).
    Runs as the first middleware, so blocked clients cost almost nothing. Config (all optional) in .env:
    SECURITY_NTFY_TOPIC (secret topic; without it blocking still works but nothing is pushed), SECURITY_NTFY_URL,
-   SECURITY_BLOCK_HOURS (24), SECURITY_SCAN_THRESHOLD (10 points/min), SECURITY_ALLOW_IPS (comma separated). */
+   SECURITY_BLOCK_HOURS (168 = one week), SECURITY_SCAN_THRESHOLD (10 points/min), SECURITY_ALLOW_IPS (comma separated). */
 const logger = require('../logger');
 const { redisDb } = require('./db');
 const { clientIp } = require('./http');
@@ -10,7 +10,7 @@ const { pushLog, readLogs, scanKeys } = require('./logs');
 const TOPIC = (process.env.SECURITY_NTFY_TOPIC || '').trim();
 const NTFY_URL = (process.env.SECURITY_NTFY_URL || 'https://ntfy.sh').replace(/\/$/, '');
 const SITE_URL = process.env.SECURITY_SITE_URL || 'https://xpto.in';
-const BLOCK_MS = (Number(process.env.SECURITY_BLOCK_HOURS) || 24) * 3600 * 1000;
+const BLOCK_MS = (Number(process.env.SECURITY_BLOCK_HOURS) || 168) * 3600 * 1000;
 const THRESHOLD = Number(process.env.SECURITY_SCAN_THRESHOLD) || 10;
 const WINDOW_MS = 60 * 1000;
 const LOGIN_MAX = 5;
@@ -124,7 +124,7 @@ async function raise(req, { type, ip, key, points, samples, blockMs, reason, pri
 
   const sent = allowed && await notify({
     title, priority, tags,
-    message: `${summary}\n${samples.slice(0, 8).join('  ')}\nBlocked for ${Math.round(blockMs / 3600e3 * 10) / 10} h${country ? ` · ${country}` : ''}\nUA: ${ua.slice(0, 120)}`
+    message: `${summary}\n${samples.slice(0, 8).join('  ')}\nBlocked for ${blockMs >= 48 * 3600e3 ? `${Math.round(blockMs / 86400e3)} days` : `${Math.round(blockMs / 3600e3 * 10) / 10} h`}${country ? ` · ${country}` : ''}\nUA: ${ua.slice(0, 120)}`
   });
   logger.warn(`Security [${type}] ${ip} blocked: ${summary}`);
   await pushLog(INCIDENTS_KEY, {

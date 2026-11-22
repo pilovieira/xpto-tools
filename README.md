@@ -24,7 +24,7 @@ A collection of lightweight, high-performance developer utilities powered by Nod
 Every tool with server-side activity has a dashboard under **`/admin`** (login required): logs, stats, and — for the shortener and PDF splitter — management actions.
 
 ### 🛡️ Security guard
-`util/security.js` runs first on every request: it scores scanners (`/.env`, `/.git`, `*.php`, bursts of 404s) and failed admin logins per IP, **blocks** the offender (403, 24 h; IPv6 by /64) and **pushes an alert to your phone** through [ntfy](https://ntfy.sh). Set `SECURITY_NTFY_TOPIC` (a long random secret) in `.env` and subscribe to it in the ntfy app. Blocked IPs, incidents and a "send test alert" button live in **`/admin/security`**. See `.env.example` for the knobs. Handoff notes to replicate this on Luna Gestão: `docs/luna-gestao-security-handoff.md`.
+`util/security.js` runs first on every request: it scores scanners (`/.env`, `/.git`, `*.php`, bursts of 404s) and failed admin logins per IP, **blocks** the offender (403, one week; IPv6 by /64) and **pushes an alert to your phone** through [ntfy](https://ntfy.sh). Set `SECURITY_NTFY_TOPIC` (a long random secret) in `.env` and subscribe to it in the ntfy app. Blocked IPs, incidents and a "send test alert" button live in **`/admin/security`**. See `.env.example` for the knobs. Handoff notes to replicate this on Luna Gestão: `docs/luna-gestao-security-handoff.md`.
 
 ---
 
